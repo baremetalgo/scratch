@@ -2,57 +2,71 @@ package main
 
 import (
 	"scratch/RayGui"
-	"scratch/RayWidgets"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-func main() {
-	rl.SetConfigFlags(rl.FlagWindowResizable)
-	rl.InitWindow(800, 600, "Proper Layout Test")
-
+func create_scratch_window() *RayGui.BaseWidget {
 	// Initialize fonts
 	RayGui.InitializeFonts()
 
-	// Create main widget
-	mainWidget := RayGui.NewBaseWidget("Main Window")
-	mainWidget.BgColor = rl.NewColor(60, 60, 60, 255)
-	mainWidget.Layout.Type = RayGui.LayoutVertical
+	// Create main widget (fills entire window)
+	mainWidget := RayGui.NewBaseWidget("MainWindow")
 	mainWidget.IsMainWindow = true
+	mainWidget.TitleBar = true
+	mainWidget.Layout.Type = RayGui.LayoutVertical
+	mainWidget.Layout.Padding = rl.NewVector2(5, 5)
+	mainWidget.Layout.Spacing = 5
 
-	// Set bounds accounting for title bar
-	mainWidget.Bounds = rl.NewRectangle(0, 0, float32(rl.GetScreenWidth()), float32(rl.GetScreenHeight()))
-	mainWidget.Layout.Bounds = rl.NewRectangle(
-		0,
-		mainWidget.TitleBarHeight, // Start below title bar
-		float32(rl.GetScreenWidth()),
-		float32(rl.GetScreenHeight())-mainWidget.TitleBarHeight,
-	)
+	//  Layouts
+	menubarLayout := RayGui.NewLayout()
+	menubarLayout.Type = RayGui.LayoutHorizontal
+	mainWidget.Layout.AddLayout(menubarLayout)
 
-	// Add label - will now appear below title bar
-	label := RayWidgets.NewRayLabel("PROPERLY POSITIONED LABEL")
-	label.TextColor = rl.Yellow
-	label.FontSize = 24
-	mainWidget.Layout.AddChild(label)
+	midPanelLayout := RayGui.NewLayout()
+	midPanelLayout.Type = RayGui.LayoutHorizontal
+	mainWidget.Layout.AddLayout(midPanelLayout)
+
+	lowerPanelLayout := RayGui.NewLayout()
+	lowerPanelLayout.Type = RayGui.LayoutVertical
+	mainWidget.Layout.AddLayout(lowerPanelLayout)
+
+	// MenuBar Widget
+	menubar := RayGui.NewBaseWidget("Menubar")
+	menubarLayout.AddChild(menubar)
+
+	// level Explorer
+	levelExplorer := RayGui.NewBaseWidget("Level Explorer")
+	midPanelLayout.AddChild(levelExplorer)
+
+	// RenderPanel
+	renderPanel := RayGui.NewBaseWidget("Game View")
+	midPanelLayout.AddChild(renderPanel)
+
+	// PropertiesPanel
+	propertiesPanel := RayGui.NewBaseWidget("Properties")
+	midPanelLayout.AddChild(propertiesPanel)
+
+	// Asset Browser
+	assetBrowser := RayGui.NewBaseWidget("Asset Browser")
+	lowerPanelLayout.AddChild(assetBrowser)
+
+	return mainWidget
+}
+
+func main() {
+	rl.SetConfigFlags(rl.FlagWindowResizable)
+	rl.InitWindow(800, 600, "Scratch GUI Framework")
+
+	mainWidget := create_scratch_window()
 
 	for !rl.WindowShouldClose() {
 		rl.BeginDrawing()
-		rl.ClearBackground(rl.Black)
-
-		// Handle window resize
-		if rl.IsWindowResized() {
-			mainWidget.Bounds = rl.NewRectangle(0, 0, float32(rl.GetScreenWidth()), float32(rl.GetScreenHeight()))
-			mainWidget.Layout.Bounds = rl.NewRectangle(
-				0,
-				mainWidget.TitleBarHeight,
-				float32(rl.GetScreenWidth()),
-				float32(rl.GetScreenHeight())-mainWidget.TitleBarHeight,
-			)
-		}
+		rl.ClearBackground(RayGui.Default_Bg_Color)
 
 		mainWidget.Update()
 		mainWidget.Draw()
-
+		rl.DrawFPS(100, 50)
 		rl.EndDrawing()
 	}
 

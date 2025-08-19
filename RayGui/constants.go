@@ -4,6 +4,7 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+var app_icon_path = "icons/puzzle.png"
 var Default_Widget_Header_Font rl.Font
 var Default_Widget_Body_Text_Font rl.Font
 var Default_Bg_Color rl.Color = rl.DarkGray
@@ -18,5 +19,9 @@ var Default_Body_Font_Size int32 = 14
 func InitializeFonts() {
 	Default_Widget_Header_Font = rl.LoadFontEx("fonts/CALIBRIB.TTF", Default_Header_Font_Size, nil, 0)
 	Default_Widget_Body_Text_Font = rl.LoadFontEx("fonts/CALIBRI.TTF", Default_Body_Font_Size, nil, 0)
+
+	icon := rl.LoadImage(app_icon_path)
+	rl.SetWindowIcon(*icon)
+	rl.UnloadImage(icon)
 
 }

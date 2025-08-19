@@ -1,6 +1,8 @@
 package RayGui
 
 import (
+	"math"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -11,46 +13,40 @@ const (
 )
 
 type MainWidget interface {
+	Update()
 	Draw()
+	SetBounds(rl.Rectangle)
 	GetBounds() rl.Rectangle
 	GetVisibility() bool
 	GetBgColor() rl.Color
 	GetTextFont() rl.Font
 	GetTextColor() rl.Color
+	GetName() string
+	GetTitleBarBound() rl.Rectangle
+	GetLayout() *Layout
 }
 
 type BoundsSetter interface {
 	SetBounds(bounds rl.Rectangle)
 }
 
-type ChildWidget interface {
-	MainWidget
-	SetLayout(layout *Layout)
-	BoundsSetter
-}
-
 type Layout struct {
+	Name     string
 	Type     int
 	Widget   MainWidget
-	Children []ChildWidget
+	Children []MainWidget
 	Layouts  []*Layout
+	Parent   *Layout
 	Spacing  int
 	Padding  rl.Vector2
 	Visible  bool
 	Bounds   rl.Rectangle
 }
 
-func NewLayout(widget MainWidget) *Layout {
-	if widget == nil {
-		// Create a default invisible widget if none provided
-		widget = &BaseWidget{
-			Visible: false,
-			Bounds:  rl.NewRectangle(0, 0, 0, 0),
-		}
-	}
+func NewLayout() *Layout {
+
 	return &Layout{
 		Type:    LayoutVertical,
-		Widget:  widget,
 		Spacing: 5,
 		Padding: rl.NewVector2(5, 5),
 		Layouts: make([]*Layout, 0),
@@ -59,64 +55,17 @@ func NewLayout(widget MainWidget) *Layout {
 	}
 }
 
-func (l *Layout) AddChild(child ChildWidget) {
-	if child == nil {
-		return
-	}
-	child.SetLayout(l)
+func (l *Layout) AddChild(child MainWidget) {
 	l.Children = append(l.Children, child)
+	l.Layouts = append(l.Layouts, child.GetLayout())
+
 }
 
 func (l *Layout) AddLayout(layout *Layout) {
-	if layout == nil {
-		return
-	}
-
-	// Set default padding if not specified
-	if layout.Padding.X == 0 && layout.Padding.Y == 0 {
-		layout.Padding = rl.NewVector2(10, 10) // More visible default padding
-	}
-
-	layout.SetLayout(l)
 	l.Layouts = append(l.Layouts, layout)
+	layout.Parent = l
+	layout.Update()
 
-	// Calculate initial bounds based on parent
-	if l.Widget != nil {
-		parentBounds := l.Widget.GetBounds()
-		layout.Bounds = rl.NewRectangle(
-			parentBounds.X+l.Padding.X,
-			parentBounds.Y+l.Padding.Y,
-			parentBounds.Width-l.Padding.X*2,
-			parentBounds.Height-l.Padding.Y*2,
-		)
-	}
-
-	// Force initial layout calculation
-	l.recalculateLayout()
-}
-
-func (l *Layout) recalculateLayout() {
-	minSize := l.GetMinSize()
-
-	// Update widget bounds if we have a widget
-	if l.Widget != nil {
-		if baseWidget, ok := l.Widget.(*BaseWidget); ok {
-			if baseWidget.Bounds.Width < minSize.X {
-				baseWidget.Bounds.Width = minSize.X
-			}
-			if baseWidget.Bounds.Height < minSize.Y {
-				baseWidget.Bounds.Height = minSize.Y
-			}
-		}
-	}
-
-	// Update our own bounds
-	if l.Bounds.Width < minSize.X {
-		l.Bounds.Width = minSize.X
-	}
-	if l.Bounds.Height < minSize.Y {
-		l.Bounds.Height = minSize.Y
-	}
 }
 
 func (l *Layout) RemoveLayout(layout *Layout) {
@@ -165,101 +114,148 @@ func (l *Layout) SetBounds(bounds rl.Rectangle) {
 	l.Bounds = bounds
 }
 
+func (l *Layout) Update() {
+
+	if l.Widget != nil {
+		widget_bounds := l.Widget.GetBounds()
+		widget_titlebar_bounds := l.Widget.GetTitleBarBound()
+		l.Bounds.X = widget_bounds.X + float32(l.Spacing)
+		l.Bounds.Y = widget_bounds.Y + widget_titlebar_bounds.Height
+		l.Bounds.Width = widget_bounds.Width - float32(l.Spacing)
+		l.Bounds.Height = widget_bounds.Height - widget_titlebar_bounds.Height - float32(l.Spacing)
+	} else {
+		parent_bounds := l.Parent.Bounds
+		l.Bounds.X = parent_bounds.X + float32(l.Spacing)
+		l.Bounds.Y = parent_bounds.Y + float32(l.Spacing)
+		l.Bounds.Width = parent_bounds.Width - float32(l.Spacing)
+		l.Bounds.Height = parent_bounds.Height - float32(l.Spacing)
+
+	}
+	rl.DrawRectangleLinesEx(l.Bounds, 1, rl.Pink)
+	l.UpdateChildLayouts()
+
+}
+
+func (l *Layout) UpdateChildLayouts() {
+	no_of_children := len(l.Layouts)
+	for i, child_layout := range l.Layouts {
+		switch l.Type {
+		case LayoutHorizontal:
+			// Calculate available width (subtract spacing between items)
+			availableWidth := l.Bounds.Width - float32(l.Spacing*(no_of_children-1))
+			width := availableWidth / float32(no_of_children)
+			height := l.Bounds.Height - float32(l.Spacing)
+
+			xpos := l.Bounds.X + (width+float32(l.Spacing))*float32(i)
+			ypos := l.Bounds.Y + float32(l.Spacing)
+
+			child_layout.SetBounds(rl.NewRectangle(xpos, ypos, width, height))
+
+		case LayoutVertical:
+			width := l.Bounds.Width - float32(l.Spacing)*2
+			height := (l.Bounds.Height)/float32(no_of_children) - float32(l.Spacing)
+
+			xpos := l.Bounds.X + float32(l.Spacing)
+			ypos := l.Bounds.Y + float32(l.Spacing) + (height+float32(l.Spacing))*float32(i)
+
+			child_layout.SetBounds(rl.NewRectangle(xpos, ypos, width, height))
+
+		case LayoutGrid:
+			cols := int(math.Ceil(math.Sqrt(float64(no_of_children))))
+			if cols < 1 {
+				cols = 1
+			}
+			rows := (no_of_children + cols - 1) / cols
+
+			availableW := l.Bounds.Width - float32(l.Spacing*(cols+1))
+			availableH := l.Bounds.Height - float32(l.Spacing*(rows+1)) - float32(l.Spacing)
+
+			cellW := availableW / float32(cols)
+			cellH := availableH / float32(rows)
+
+			row := i / cols
+			col := i % cols
+
+			xpos := l.Bounds.X + float32(l.Spacing) + float32(col)*(cellW+float32(l.Spacing))
+			ypos := l.Bounds.Y + float32(l.Spacing) + float32(row)*(cellH+float32(l.Spacing))
+
+			child_layout.SetBounds(rl.NewRectangle(xpos, ypos, cellW, cellH))
+		}
+		rl.DrawRectangleLinesEx(child_layout.GetBounds(), 1, rl.Pink)
+		child_layout.UpdateChildLayouts()
+		child_layout.UpdateChildWidgets()
+	}
+}
+
 func (l *Layout) Draw() {
-	if !l.Visible || (l.Widget != nil && !l.Widget.GetVisibility()) {
+	if !l.Visible {
 		return
 	}
-	// Calculate available space
-	availableWidth := l.Bounds.Width - l.Padding.X*2
-	availableHeight := l.Bounds.Height - l.Padding.Y*2
-	// Calculate available space accounting for title bar
-	var titleBarHeight float32 = 0
-	if baseWidget, ok := l.Widget.(*BaseWidget); ok && baseWidget.TitleBar {
-		titleBarHeight = baseWidget.TitleBarHeight
+	for _, child_widget := range l.Children {
+		child_widget.Draw()
+	}
+	for _, child_layout := range l.Layouts {
+		child_layout.Draw()
+	}
+}
+
+func (l *Layout) UpdateChildWidgets() {
+	no_of_children := len(l.Children)
+	if no_of_children == 0 {
+		return
 	}
 
-	contentStartY := l.Bounds.Y + titleBarHeight
-	availableHeight = l.Bounds.Height - titleBarHeight - l.Padding.Y*2
-
-	// Position tracking (start below title bar)
-	var x, y float32 = l.Bounds.X + l.Padding.X, contentStartY + l.Padding.Y
-	var maxY float32 = y + availableHeight
-
-	// Draw child widgets
-	for _, child := range l.Children {
-		if !child.GetVisibility() {
-			continue
+	for i, child_widget := range l.Children {
+		var titleBarHeight float32 = 0
+		if baseWidget, ok := child_widget.(*BaseWidget); ok && baseWidget.TitleBar {
+			titleBarHeight = baseWidget.TitleBarHeight
 		}
 
-		childBounds := child.GetBounds()
-		childBounds.X = x
-		childBounds.Y = y
+		switch l.Type {
+		case LayoutHorizontal:
+			// Calculate available width (subtract spacing between items)
+			availableWidth := l.Bounds.Width - float32(l.Spacing*(no_of_children-1))
+			width := availableWidth / float32(no_of_children)
+			height := l.Bounds.Height - titleBarHeight
 
-		// Adjust dimensions to available space
-		if l.Type == LayoutVertical {
-			childBounds.Width = availableWidth
-			// Constrain height if it would exceed available space
-			if childBounds.Height > (maxY - y) {
-				childBounds.Height = maxY - y
+			xpos := l.Bounds.X + (width+float32(l.Spacing))*float32(i)
+			ypos := l.Bounds.Y + titleBarHeight
+
+			child_widget.SetBounds(rl.NewRectangle(xpos, ypos, width, height))
+
+		case LayoutVertical:
+			width := l.Bounds.Width - float32(l.Spacing)*2
+			height := (l.Bounds.Height)/float32(no_of_children) - float32(l.Spacing)
+
+			xpos := l.Bounds.X + float32(l.Spacing)
+			ypos := l.Bounds.Y + float32(l.Spacing) + (height+float32(l.Spacing))*float32(i)
+
+			child_widget.SetBounds(rl.NewRectangle(xpos, ypos, width, height))
+
+		case LayoutGrid:
+			cols := int(math.Ceil(math.Sqrt(float64(no_of_children))))
+			if cols < 1 {
+				cols = 1
 			}
-		} else {
-			// For horizontal layout, constrain height to available height
-			childBounds.Height = availableHeight
-		}
+			rows := (no_of_children + cols - 1) / cols
 
-		child.SetBounds(childBounds)
-		child.Draw()
+			availableW := l.Bounds.Width - float32(l.Spacing*(cols+1))
+			availableH := l.Bounds.Height - float32(l.Spacing*(rows+1)) - titleBarHeight
 
-		if l.Type == LayoutVertical {
-			y += childBounds.Height + float32(l.Spacing)
-			if y > maxY {
-				break // Stop drawing if we've exceeded available height
-			}
-		} else {
-			x += childBounds.Width + float32(l.Spacing)
-			if x > (l.Bounds.X + l.Bounds.Width - l.Padding.X) {
-				break // Stop drawing if we've exceeded available width
-			}
-		}
-	}
+			cellW := availableW / float32(cols)
+			cellH := availableH / float32(rows)
 
-	// Draw nested layouts
-	for _, layout := range l.Layouts {
-		if !layout.GetVisibility() {
-			continue
-		}
+			row := i / cols
+			col := i % cols
 
-		layoutBounds := layout.GetBounds()
-		layoutBounds.X = x
-		layoutBounds.Y = y
+			xpos := l.Bounds.X + float32(l.Spacing) + float32(col)*(cellW+float32(l.Spacing))
+			ypos := l.Bounds.Y + float32(l.Spacing) + float32(row)*(cellH+float32(l.Spacing))
 
-		// Set dimensions based on layout type
-		if l.Type == LayoutVertical {
-			layoutBounds.Width = availableWidth
-			// Constrain height if it would exceed available space
-			if layoutBounds.Height > (maxY - y) {
-				layoutBounds.Height = maxY - y
-			}
-		} else {
-			layoutBounds.Height = availableHeight
-		}
-
-		layout.SetBounds(layoutBounds)
-		layout.Draw()
-
-		if l.Type == LayoutVertical {
-			y += layoutBounds.Height + float32(l.Spacing)
-			if y > maxY {
-				break
-			}
-		} else {
-			x += layoutBounds.Width + float32(l.Spacing)
-			if x > (l.Bounds.X + l.Bounds.Width - l.Padding.X) {
-				break
-			}
+			child_widget.SetBounds(rl.NewRectangle(xpos, ypos, cellW, cellH))
 		}
 	}
 }
+
 func (l *Layout) GetMinSize() rl.Vector2 {
 	var minWidth, minHeight float32 = 0, 0
 
