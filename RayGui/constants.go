@@ -4,7 +4,7 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-var app_icon_path = "icons/puzzle.png"
+var app_icon_path = "icons/app_icon_small.png"
 var Default_Widget_Header_Font rl.Font
 var Default_Widget_Body_Text_Font rl.Font
 var Default_Bg_Color rl.Color = rl.DarkGray

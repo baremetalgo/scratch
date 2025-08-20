@@ -12,6 +12,7 @@ func create_scratch_window() *RayGui.BaseWidget {
 
 	// Create main widget (fills entire window)
 	mainWidget := RayGui.NewBaseWidget("MainWindow")
+	mainWidget.Layout.Name = "MainLayout"
 	mainWidget.IsMainWindow = true
 	mainWidget.TitleBar = true
 	mainWidget.Layout.Type = RayGui.LayoutVertical
@@ -24,15 +25,23 @@ func create_scratch_window() *RayGui.BaseWidget {
 	mainWidget.Layout.AddLayout(menubarLayout)
 
 	midPanelLayout := RayGui.NewLayout()
+	midPanelLayout.Name = "MidPanelLayout"
 	midPanelLayout.Type = RayGui.LayoutHorizontal
 	mainWidget.Layout.AddLayout(midPanelLayout)
 
 	lowerPanelLayout := RayGui.NewLayout()
+	lowerPanelLayout.Name = "LowerPanelLayout"
 	lowerPanelLayout.Type = RayGui.LayoutVertical
 	mainWidget.Layout.AddLayout(lowerPanelLayout)
 
 	// MenuBar Widget
 	menubar := RayGui.NewBaseWidget("Menubar")
+	menubar.Layout.Name = "MenuBarLayout"
+	menubar.TitleBar = false
+	menubar.TitleBarColor = rl.NewColor(255, 255, 255, 0)
+	menubar.BgColor = rl.NewColor(255, 255, 255, 0)
+	menubar.DrawBackground = true
+	menubar.Layout.FixedHeight = 25
 	menubarLayout.AddChild(menubar)
 
 	// level Explorer

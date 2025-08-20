@@ -64,24 +64,33 @@ func NewBaseWidget(name string) *BaseWidget {
 		last_position:         rl.NewVector2(0, 0),
 		Closed:                false,
 	}
+	b.IsMainWindow = false
 	b.Layout = NewLayout()
 	b.Layout.Name = fmt.Sprintf("%v_Layout", b.Name)
 	b.Layout.Widget = b
-	b.Layout.Bounds = b.Bounds
-	b.TitleBarBounds = rl.NewRectangle(
-		b.Bounds.X,
-		b.Bounds.Y,
-		b.Bounds.Width,
-		b.TitleBarHeight,
-	)
+
 	b.last_position = rl.NewVector2(b.Bounds.X, b.Bounds.Y)
 	b.HeaderFont = Default_Widget_Header_Font
 	b.TextFont = Default_Widget_Body_Text_Font
+
+	if b.Layout.FixedHeight > 1 {
+		b.Bounds.Height = NewLayout().FixedHeight
+
+	}
+	if b.Layout.FixedWidth > 1 {
+		b.Bounds.Width = NewLayout().FixedWidth
+	}
+	b.Layout.Bounds = b.Bounds
+
 	return b
 }
 
 func (b *BaseWidget) GetBounds() rl.Rectangle {
 	return b.Bounds
+}
+
+func (b *BaseWidget) GetTitleBar() bool {
+	return b.TitleBar
 }
 
 func SetLayout(widget *BaseWidget, layout *Layout) {
@@ -96,23 +105,14 @@ func (b *BaseWidget) SetBounds(bounds rl.Rectangle) {
 	b.Bounds = bounds
 
 	// Update title bar bounds
-	b.TitleBarBounds = rl.NewRectangle(
-		b.Bounds.X,
-		b.Bounds.Y,
-		b.Bounds.Width,
-		b.TitleBarHeight,
-	)
-	/*
-		// Calculate movement delta
-
-		deltaX := bounds.X - b.Bounds.X
-		deltaY := bounds.Y - b.Bounds.Y
-			// Move children by the same delta
-			for _, child := range b.Children {
-				child.Bounds.X += deltaX
-				child.Bounds.Y += deltaY
-			}
-	*/
+	if !b.IsMainWindow && b.TitleBar {
+		b.TitleBarBounds = rl.NewRectangle(
+			b.Bounds.X,
+			b.Bounds.Y,
+			b.Bounds.Width,
+			b.TitleBarHeight,
+		)
+	}
 }
 
 func (b *BaseWidget) GetTitleBarBound() rl.Rectangle {
@@ -157,35 +157,33 @@ func (b *BaseWidget) buttonRects() (minBtn, maxBtn, closeBtn rl.Rectangle, minSi
 	b.CloseButton = closeBtn
 	return minBtn, maxBtn, closeBtn, size, size, size
 }
-
 func (b *BaseWidget) Draw() {
 	if !b.Visible || b.Closed {
 		return
 	}
-
-	if b.IsMainWindow {
-		b.SetBounds(
-			rl.NewRectangle(
-				0,
-				0,
-				float32(rl.GetScreenWidth()),
-				float32(rl.GetScreenHeight()),
-			))
-	}
+	b.Layout.Draw()
 
 	// Draw background first
 	if b.DrawBackground {
 		rl.DrawRectangleRec(b.Bounds, b.BgColor)
 	}
 
-	// Title bar
-	if b.TitleBar {
+	// Title bar - draw for all widgets that have TitleBar true, except main window
+	if b.TitleBar && !b.IsMainWindow {
+		// Update title bar bounds before drawing
+		b.TitleBarBounds = rl.NewRectangle(
+			b.Bounds.X,
+			b.Bounds.Y,
+			b.Bounds.Width,
+			b.TitleBarHeight,
+		)
+
 		rl.DrawRectangleRec(b.TitleBarBounds, b.TitleBarColor)
 		rl.DrawRectangleLinesEx(b.TitleBarBounds, 1, b.BorderColor)
 
 		// Title text
 		rl.DrawTextEx(
-			Default_Widget_Header_Font,
+			b.HeaderFont,
 			b.Name,
 			rl.NewVector2(b.Bounds.X+7, b.Bounds.Y+7),
 			14,
@@ -208,8 +206,6 @@ func (b *BaseWidget) Draw() {
 		rl.DrawRectangle(int32(closeBtn.X), int32(closeBtn.Y), closeSize, closeSize, rl.LightGray)
 		rl.DrawText("x", int32(closeBtn.X)+2, int32(closeBtn.Y)-2, 20, rl.Black)
 	}
-
-	b.Layout.Draw()
 
 	// Border last so it's on top
 	rl.DrawRectangleLinesEx(b.Bounds, 2, b.BorderColor)
@@ -236,7 +232,6 @@ func (b *BaseWidget) Draw() {
 
 		b.resizeHandler = handleRect
 	}
-
 }
 
 func (b *BaseWidget) Update() {
@@ -244,92 +239,36 @@ func (b *BaseWidget) Update() {
 		return
 	}
 
-	// Sync with window if main window
+	// Always update title bar bounds if title bar is enabled
+	if b.TitleBar && !b.IsMainWindow {
+		b.TitleBarBounds = rl.NewRectangle(
+			b.Bounds.X,
+			b.Bounds.Y,
+			b.Bounds.Width,
+			b.TitleBarHeight,
+		)
+	}
+
+	// For main window, set layout bounds to match window size
 	if b.IsMainWindow {
-		b.SyncWithWindow()
-	}
+		windowWidth := float32(rl.GetScreenWidth())
+		windowHeight := float32(rl.GetScreenHeight())
 
-	mouse := rl.GetMousePosition()
-	mousePressed := rl.IsMouseButtonPressed(rl.MouseLeftButton)
-	mouseReleased := rl.IsMouseButtonReleased(rl.MouseLeftButton)
-	mouseDown := rl.IsMouseButtonDown(rl.MouseLeftButton)
+		b.Layout.Bounds.X = b.Bounds.X + b.Layout.Padding.X
+		b.Layout.Bounds.Y = b.Bounds.Y + b.Layout.Padding.Y
 
-	// Handle resize handler dragging
-	if mousePressed && rl.CheckCollisionPointRec(mouse, b.resizeHandler) {
-		b.resizeHandlerColor = rl.LightGray
-		b.resizehandlerDragging = true
-	}
-
-	if mouseReleased {
-		b.resizehandlerDragging = false
-		b.resizeHandlerColor = Default_ResizerHandler_Color
-	}
-
-	if b.resizehandlerDragging && mouseDown {
-		if b.IsMainWindow {
-			// For main window, resize the actual window
-			newWidth := int(mouse.X)
-			newHeight := int(mouse.Y)
-
-			// Set minimum window size
-			minSize := b.Layout.GetMinSize()
-			if newWidth < int(minSize.X) {
-				newWidth = int(minSize.X)
-			}
-			if newHeight < int(minSize.Y) {
-				newHeight = int(minSize.Y)
-			}
-
-			// Set new window size
-			rl.SetWindowSize(newWidth, newHeight)
-			b.SyncWithWindow()
+		// Only update width/height if not fixed
+		if b.Layout.FixedWidth <= 0 {
+			b.Layout.Bounds.Width = windowWidth - b.Layout.Padding.X*2
+		}
+		if b.Layout.FixedHeight <= 0 {
+			b.Layout.Bounds.Height = windowHeight - b.Layout.Padding.Y*2
 		}
 	}
 
-	// Update layout bounds to match widget bounds
-	b.Layout.Bounds = b.Bounds
+	// Update the layout with proper bounds calculation
 	b.Layout.Update()
-}
 
-func (b *BaseWidget) EnforceMinWidth() {
-	titleMin := b.getTitleBarMinWidth()
-	layoutMin := b.Layout.GetMinSize().X
-
-	minWidth := titleMin
-	if layoutMin > minWidth {
-		minWidth = layoutMin
-	}
-
-	if b.Bounds.Width < minWidth {
-		b.Bounds.Width = minWidth
-	}
-}
-
-func (b *BaseWidget) getTitleBarMinWidth() float32 {
-	textSize := rl.MeasureTextEx(
-		Default_Widget_Header_Font,
-		b.Name,
-		14,
-		0,
-	)
-	buttonPad := float32(b.TitleBarHeight*2 + 12)
-	return textSize.X + 20 + buttonPad
-}
-
-func (b *BaseWidget) Close() {
-	if b.IsMainWindow {
-		// For main window, we'll let the main loop handle the actual closing
-		b.Closed = true
-	} else {
-		b.Closed = true
-		b.Visible = false
-	}
-}
-
-func (b *BaseWidget) SyncWithWindow() {
-	if b.IsMainWindow {
-		b.Bounds = rl.NewRectangle(0, 0, float32(rl.GetScreenWidth()), float32(rl.GetScreenHeight()))
-	}
 }
 
 func (b *BaseWidget) Unload() {
