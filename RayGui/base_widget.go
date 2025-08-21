@@ -17,6 +17,7 @@ type BaseWidget struct {
 	MinHeight             float32
 	Parent                *BaseWidget
 	DrawBackground        bool
+	DrawWidgetBorder      bool
 	BgColor               rl.Color
 	TextColor             rl.Color
 	BorderColor           rl.Color
@@ -54,6 +55,7 @@ func NewBaseWidget(name string) *BaseWidget {
 		Parent:                nil,
 		BgColor:               Default_Bg_Color,
 		DrawBackground:        false,
+		DrawWidgetBorder:      true,
 		TextColor:             Default_Text_Color,
 		BorderColor:           rl.Gray,
 		TitleBar:              true,
@@ -140,11 +142,11 @@ func (b *BaseWidget) GetTextColor() rl.Color {
 }
 
 func (b *BaseWidget) buttonRects() (minBtn, maxBtn, closeBtn rl.Rectangle, minSize, maxSize, closeSize int32) {
+	b.Bounds = b.Layout.Bounds
 	size := int32(b.TitleBarHeight - 10)
 	if size < 8 {
 		size = 8
 	}
-
 	y := b.Bounds.ToInt32().Y + (int32(b.TitleBarHeight) / 4)
 
 	closeX := int32(b.Bounds.X+b.Bounds.Width) - int32(b.TitleBarHeight) - 2
@@ -157,35 +159,36 @@ func (b *BaseWidget) buttonRects() (minBtn, maxBtn, closeBtn rl.Rectangle, minSi
 	b.CloseButton = closeBtn
 	return minBtn, maxBtn, closeBtn, size, size, size
 }
+
 func (b *BaseWidget) Draw() {
 	if !b.Visible || b.Closed {
 		return
 	}
-	b.Layout.Draw()
 
 	// Draw background first
 	if b.DrawBackground {
-		rl.DrawRectangleRec(b.Bounds, b.BgColor)
+		rl.DrawRectangleRec(b.Layout.Bounds, b.BgColor)
 	}
 
 	// Title bar - draw for all widgets that have TitleBar true, except main window
 	if b.TitleBar && !b.IsMainWindow {
-		// Update title bar bounds before drawing
+
 		b.TitleBarBounds = rl.NewRectangle(
-			b.Bounds.X,
-			b.Bounds.Y,
-			b.Bounds.Width,
+			b.Layout.Bounds.X,
+			b.Layout.Bounds.Y,
+			b.Layout.Bounds.Width,
 			b.TitleBarHeight,
 		)
 
 		rl.DrawRectangleRec(b.TitleBarBounds, b.TitleBarColor)
-		rl.DrawRectangleLinesEx(b.TitleBarBounds, 1, b.BorderColor)
-
+		if b.DrawWidgetBorder {
+			rl.DrawRectangleLinesEx(b.TitleBarBounds, 1, b.BorderColor)
+		}
 		// Title text
 		rl.DrawTextEx(
 			b.HeaderFont,
 			b.Name,
-			rl.NewVector2(b.Bounds.X+7, b.Bounds.Y+7),
+			rl.NewVector2(b.Layout.Bounds.X+7, b.Layout.Bounds.Y+7),
 			14,
 			0,
 			rl.White,
@@ -208,8 +211,10 @@ func (b *BaseWidget) Draw() {
 	}
 
 	// Border last so it's on top
-	rl.DrawRectangleLinesEx(b.Bounds, 2, b.BorderColor)
-	b.last_position = rl.NewVector2(b.Bounds.X, b.Bounds.Y)
+	if b.DrawWidgetBorder {
+		rl.DrawRectangleLinesEx(b.Layout.Bounds, 1, b.BorderColor)
+	}
+	b.last_position = rl.NewVector2(b.Layout.Bounds.X, b.Layout.Bounds.Y)
 
 	// drawing resize handle in case of mainwindow
 	if b.IsMainWindow {
@@ -232,6 +237,7 @@ func (b *BaseWidget) Draw() {
 
 		b.resizeHandler = handleRect
 	}
+	b.Layout.Draw()
 }
 
 func (b *BaseWidget) Update() {
@@ -248,26 +254,16 @@ func (b *BaseWidget) Update() {
 			b.TitleBarHeight,
 		)
 	}
-
+	b.Layout.Update()
 	// For main window, set layout bounds to match window size
 	if b.IsMainWindow {
 		windowWidth := float32(rl.GetScreenWidth())
 		windowHeight := float32(rl.GetScreenHeight())
-
-		b.Layout.Bounds.X = b.Bounds.X + b.Layout.Padding.X
-		b.Layout.Bounds.Y = b.Bounds.Y + b.Layout.Padding.Y
-
-		// Only update width/height if not fixed
-		if b.Layout.FixedWidth <= 0 {
-			b.Layout.Bounds.Width = windowWidth - b.Layout.Padding.X*2
-		}
-		if b.Layout.FixedHeight <= 0 {
-			b.Layout.Bounds.Height = windowHeight - b.Layout.Padding.Y*2
-		}
+		b.Bounds.Width = windowWidth - float32(b.Layout.Spacing)
+		b.Bounds.Height = windowHeight - float32(b.Layout.Spacing)
 	}
 
 	// Update the layout with proper bounds calculation
-	b.Layout.Update()
 
 }
 

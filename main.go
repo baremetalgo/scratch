@@ -21,6 +21,7 @@ func create_scratch_window() *RayGui.BaseWidget {
 
 	//  Layouts
 	menubarLayout := RayGui.NewLayout()
+	menubarLayout.Name = "MenuBarLayout"
 	menubarLayout.Type = RayGui.LayoutHorizontal
 	mainWidget.Layout.AddLayout(menubarLayout)
 
@@ -36,12 +37,12 @@ func create_scratch_window() *RayGui.BaseWidget {
 
 	// MenuBar Widget
 	menubar := RayGui.NewBaseWidget("Menubar")
-	menubar.Layout.Name = "MenuBarLayout"
+	menubar.Layout.Name = "MenuBarWidgetLayout"
 	menubar.TitleBar = false
 	menubar.TitleBarColor = rl.NewColor(255, 255, 255, 0)
 	menubar.BgColor = rl.NewColor(255, 255, 255, 0)
 	menubar.DrawBackground = true
-	menubar.Layout.FixedHeight = 25
+	menubar.Layout.FixedHeight = 50
 	menubarLayout.AddChild(menubar)
 
 	// level Explorer
@@ -51,7 +52,6 @@ func create_scratch_window() *RayGui.BaseWidget {
 	// RenderPanel
 	renderPanel := RayGui.NewBaseWidget("Game View")
 	midPanelLayout.AddChild(renderPanel)
-
 	// PropertiesPanel
 	propertiesPanel := RayGui.NewBaseWidget("Properties")
 	midPanelLayout.AddChild(propertiesPanel)
@@ -64,7 +64,7 @@ func create_scratch_window() *RayGui.BaseWidget {
 }
 
 func main() {
-	rl.SetConfigFlags(rl.FlagWindowResizable)
+	rl.SetConfigFlags(rl.FlagWindowResizable | rl.FlagWindowTopmost)
 	rl.InitWindow(800, 600, "Scratch GUI Framework")
 
 	mainWidget := create_scratch_window()

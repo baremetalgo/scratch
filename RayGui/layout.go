@@ -1,7 +1,6 @@
 package RayGui
 
 import (
-	"fmt"
 	"math"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -45,24 +44,25 @@ type Layout struct {
 	Bounds      rl.Rectangle
 	FixedHeight float32
 	FixedWidth  float32
+	DebugDraw   bool
 }
 
 func NewLayout() *Layout {
 
 	return &Layout{
-		Type:    LayoutVertical,
-		Spacing: 5,
-		Padding: rl.NewVector2(5, 5),
-		Layouts: make([]*Layout, 0),
-		Visible: true,
-		Bounds:  rl.NewRectangle(0, 0, 0, 0),
+		Type:      LayoutVertical,
+		Spacing:   10,
+		Padding:   rl.NewVector2(5, 5),
+		Layouts:   make([]*Layout, 0),
+		Visible:   true,
+		Bounds:    rl.NewRectangle(0, 0, 0, 0),
+		DebugDraw: true,
 	}
 }
 
 func (l *Layout) AddChild(child MainWidget) {
 	l.Children = append(l.Children, child)
-	// Don't add the child's layout to the Layouts slice
-	// Layouts slice should only contain pure layout objects, not widget-attached layouts
+	l.AddLayout(child.GetLayout())
 }
 func (l *Layout) AddLayout(layout *Layout) {
 	l.Layouts = append(l.Layouts, layout)
@@ -114,44 +114,37 @@ func (l *Layout) SetBounds(bounds rl.Rectangle) {
 }
 
 func (l *Layout) Update() {
+
 	if l.Widget != nil {
 		widget_bounds := l.Widget.GetBounds()
 		widget_titlebar_bounds := l.Widget.GetTitleBarBound()
 
-		l.Bounds.X = widget_bounds.X + l.Padding.X
+		l.Bounds.X = widget_bounds.X + l.Padding.X + float32(l.Spacing)
+		l.Bounds.Y = widget_bounds.Y + l.Padding.Y + float32(l.Spacing)
 		if l.Widget.GetTitleBar() {
-			l.Bounds.Y = widget_bounds.Y + widget_titlebar_bounds.Height + l.Padding.Y
-		} else {
-			l.Bounds.Y = widget_bounds.Y + l.Padding.Y
+			l.Bounds.Y = widget_bounds.Y + widget_titlebar_bounds.Height + l.Padding.Y + float32(l.Spacing)
 		}
 
+		l.Bounds.Width = widget_bounds.Width - l.Padding.X*2 - float32(l.Spacing)
+		l.Bounds.Height = widget_bounds.Height - widget_titlebar_bounds.Height - l.Padding.Y*2 - float32(l.Spacing)
 		// Use fixed width/height if specified, otherwise calculate from widget
-		if l.FixedWidth > 0 {
+
+		if l.FixedWidth > 1 {
 			l.Bounds.Width = l.FixedWidth
-		} else {
-			l.Bounds.Width = widget_bounds.Width - l.Padding.X*2
 		}
 
-		if l.FixedHeight > 0 {
+		if l.FixedHeight > 1 {
 			l.Bounds.Height = l.FixedHeight
-		} else {
-			l.Bounds.Height = widget_bounds.Height - widget_titlebar_bounds.Height - l.Padding.Y*2
 		}
 	} else if l.Parent != nil {
-		// For nested layouts, bounds are already set by parent layout in UpdateChildLayouts()
-		// We don't need to recalculate them here
 	}
 
-	// Update child layouts FIRST to ensure proper bounds calculation
+	// Adjust final height based on height of All the children
 	l.UpdateChildLayouts()
 	l.UpdateChildWidgets()
+	rl.DrawRectangleLinesEx(l.Bounds, 1, rl.Pink)
+	rl.DrawTextEx(Default_Widget_Header_Font, l.Name, rl.NewVector2(l.Bounds.X, l.Bounds.Y), 15, 0, rl.Black)
 
-	// Draw debug rectangles after bounds are properly set
-	if l.Parent != nil && len(l.Layouts) > 0 {
-		for _, child_layout := range l.Layouts {
-			rl.DrawRectangleLinesEx(child_layout.Bounds, 1, rl.Pink)
-		}
-	}
 }
 
 func (l *Layout) UpdateChildLayouts() {
@@ -161,95 +154,159 @@ func (l *Layout) UpdateChildLayouts() {
 
 	no_of_children := len(l.Layouts)
 
-	switch l.Type {
-	case LayoutVertical:
-		// First pass: calculate total fixed height and count flexible children
-		var fixedHeightTotal float32 = 0
-		var flexibleChildren int = 0
+	for i, child_layout := range l.Layouts {
 
-		for _, child_layout := range l.Layouts {
-			if child_layout.FixedHeight > 0 {
-				fixedHeightTotal += child_layout.FixedHeight
-			} else {
-				flexibleChildren++
-			}
-		}
+		switch l.Type {
+		case LayoutHorizontal:
+			// Calculate available width (subtract spacing between items)
+			availableWidth := l.Bounds.Width - float32(l.Spacing*(no_of_children-1)) - float32(child_layout.Spacing)
 
-		// Calculate available height for flexible children
-		availableHeight := l.Bounds.Height - float32(l.Spacing*(no_of_children-1))
-		availableFlexibleHeight := availableHeight - fixedHeightTotal
-		flexibleHeight := float32(0)
-		if flexibleChildren > 0 && availableFlexibleHeight > 0 {
-			flexibleHeight = availableFlexibleHeight / float32(flexibleChildren)
-		}
+			// Use fixed width if specified, otherwise distribute evenly
+			width := availableWidth/float32(no_of_children) - float32(l.Spacing)
+			if child_layout.Parent.Widget != nil {
 
-		// Second pass: set bounds for each child layout
-		var currentY float32 = l.Bounds.Y
+				if child_layout.Parent.Widget.GetLayout().FixedWidth > 0 {
 
-		for _, child_layout := range l.Layouts {
-			width := l.Bounds.Width
-			height := float32(0)
+					child_layout.Bounds.Width = child_layout.Parent.Widget.GetLayout().FixedWidth - float32(child_layout.Spacing) - float32(l.Spacing)
+				}
 
-			// Use fixed height if specified, otherwise use calculated flexible height
-			if child_layout.FixedHeight > 0 {
-				height = child_layout.FixedHeight
-			} else {
-				height = flexibleHeight
 			}
 
-			// Ensure height doesn't exceed available space
-			if height < 0 {
-				height = 0
-			}
-
-			// Use fixed width if specified for the child layout
 			if child_layout.FixedWidth > 0 {
-				width = child_layout.FixedWidth
+
+				width = child_layout.FixedWidth - float32(child_layout.Spacing) - float32(l.Spacing)
 			}
 
-			child_layout.SetBounds(rl.NewRectangle(l.Bounds.X, currentY, width, height))
-			currentY += height + float32(l.Spacing)
-		}
+			// Use fixed height if specified, otherwise use parent height
+			height := l.Bounds.Height - float32(child_layout.Spacing) - float32(l.Spacing)
+			if child_layout.Parent.Widget != nil {
 
-	case LayoutGrid:
-		cols := int(math.Ceil(math.Sqrt(float64(no_of_children))))
-		if cols < 1 {
-			cols = 1
-		}
-		rows := (no_of_children + cols - 1) / cols
+				if child_layout.Parent.Widget.GetLayout().FixedHeight > 0 {
+					child_layout.Bounds.Height = child_layout.Parent.Widget.GetLayout().FixedHeight - float32(child_layout.Spacing)
+				}
 
-		availableW := l.Bounds.Width - float32(l.Spacing*(cols+1))
-		availableH := l.Bounds.Height - float32(l.Spacing*(rows+1))
-
-		// Default cell dimensions
-		cellW := availableW / float32(cols)
-		cellH := availableH / float32(rows)
-
-		for i, child_layout := range l.Layouts {
-			// Use fixed dimensions if specified, otherwise use calculated cell dimensions
-			width := cellW
-			if child_layout.FixedWidth > 0 {
-				width = child_layout.FixedWidth
 			}
-
-			height := cellH
+			final_height := height
 			if child_layout.FixedHeight > 0 {
-				height = child_layout.FixedHeight
+				final_height = child_layout.FixedHeight - float32(child_layout.Spacing) - float32(l.Spacing)
+
+			}
+			final_width := width
+			if child_layout.FixedWidth > 0 {
+				final_width = child_layout.FixedWidth - float32(child_layout.Spacing) - float32(l.Spacing)
+			}
+
+			xpos := l.Bounds.X + (width+float32(l.Spacing))*float32(i) + float32(child_layout.Spacing)
+			ypos := l.Bounds.Y + float32(child_layout.Spacing)
+
+			child_layout.SetBounds(rl.NewRectangle(xpos, ypos, final_width, final_height))
+
+			if i > 0 {
+
+				last_layout := l.Layouts[i-1]
+				child_layout.Bounds.Y = last_layout.Bounds.Y
+				child_layout.Bounds.X = last_layout.Bounds.X + child_layout.Bounds.Width + float32(l.Spacing)
+			}
+
+		case LayoutVertical:
+			// Use fixed width if specified, otherwise use parent width
+			width := l.Bounds.Width - float32(child_layout.Spacing) - float32(l.Spacing)
+
+			if child_layout.Parent.Widget != nil {
+				if child_layout.Parent.Widget.GetLayout().FixedWidth > 0 {
+
+					child_layout.Bounds.Width = child_layout.Parent.Widget.GetLayout().FixedWidth - float32(child_layout.Spacing)
+				}
+
+			}
+			if child_layout.FixedWidth > 0 {
+				width = child_layout.FixedWidth - float32(child_layout.Spacing) - float32(l.Spacing)
+			}
+
+			// Calculate available height (subtract spacing between items)
+			availableHeight := l.Bounds.Height - float32(l.Spacing*(no_of_children-1)) - float32(child_layout.Spacing)
+
+			// Use fixed height if specified, otherwise distribute evenly
+			height := availableHeight/float32(no_of_children) - float32(child_layout.Spacing)
+
+			if child_layout.Parent.Widget != nil {
+				if child_layout.Parent.Widget.GetLayout().FixedHeight > 0 {
+					child_layout.Bounds.Height = child_layout.Parent.Widget.GetLayout().FixedHeight - float32(child_layout.Spacing)
+				}
+
+			}
+
+			if child_layout.FixedHeight > 0 {
+				height = child_layout.FixedHeight - float32(child_layout.Spacing)
+			}
+
+			xpos := l.Bounds.X + float32(child_layout.Spacing)
+			ypos := l.Bounds.Y + (height+float32(l.Spacing))*float32(i) + float32(child_layout.Spacing)
+
+			child_layout.SetBounds(rl.NewRectangle(xpos, ypos, width, height))
+			if i > 0 {
+
+				last_layout := l.Layouts[i-1]
+				child_layout.Bounds.Y = last_layout.Bounds.Y + last_layout.Bounds.Height + float32(l.Spacing)
+				child_layout.Bounds.X = last_layout.Bounds.X
+			}
+
+		case LayoutGrid:
+			cols := int(math.Ceil(math.Sqrt(float64(no_of_children))))
+			if cols < 1 {
+				cols = 1
+			}
+			rows := (no_of_children + cols - 1) / cols
+
+			availableW := l.Bounds.Width - float32(l.Spacing*(cols+1)) - float32(child_layout.Spacing)
+			availableH := l.Bounds.Height - float32(l.Spacing*(rows+1)) - float32(child_layout.Spacing)
+
+			cellW := availableW / float32(cols)
+			cellH := availableH / float32(rows)
+
+			// Override with fixed dimensions if specified
+			if child_layout.FixedWidth > 0 {
+				cellW = child_layout.FixedWidth - float32(l.Spacing)
+			}
+			if child_layout.FixedHeight > 0 {
+				cellH = child_layout.FixedHeight - float32(l.Spacing)
 			}
 
 			row := i / cols
 			col := i % cols
 
-			xpos := l.Bounds.X + float32(l.Spacing) + float32(col)*(cellW+float32(l.Spacing))
-			ypos := l.Bounds.Y + float32(l.Spacing) + float32(row)*(cellH+float32(l.Spacing))
+			xpos := l.Bounds.X + float32(l.Spacing) + float32(col)*(cellW+float32(l.Spacing)) + float32(child_layout.Spacing)
+			ypos := l.Bounds.Y + float32(l.Spacing) + float32(row)*(cellH+float32(l.Spacing)) + float32(child_layout.Spacing)
 
-			child_layout.SetBounds(rl.NewRectangle(xpos, ypos, width, height))
+			child_layout.SetBounds(rl.NewRectangle(xpos, ypos, cellW, cellH))
 		}
-	}
 
-	// Update all child layouts
-	for _, child_layout := range l.Layouts {
-		child_layout.Update()
+		child_layout.UpdateChildLayouts()
+		child_layout.UpdateChildWidgets()
+
+		// accumulating height and width  if all children
+		if child_layout.FixedHeight > 0 {
+			total_height := child_layout.Bounds.Height + float32(l.Spacing) + float32(child_layout.Spacing)
+
+			for _, child := range child_layout.Layouts {
+				total_height += child.Bounds.Height
+
+			}
+			l.Bounds.Height = total_height
+		}
+		if child_layout.FixedWidth > 0 {
+			total_width := child_layout.Bounds.Width + float32(l.Spacing) + float32(child_layout.Spacing)
+
+			for _, child := range child_layout.Layouts {
+				total_width += child.Bounds.Width
+			}
+			l.Bounds.Width = total_width
+		}
+
+		if child_layout.DebugDraw {
+			rl.DrawRectangleLinesEx(child_layout.Bounds, 1, rl.Pink)
+			rl.DrawTextEx(Default_Widget_Header_Font, child_layout.Name, rl.NewVector2(child_layout.Bounds.X, child_layout.Bounds.Y), 15, 0, rl.Black)
+		}
 	}
 }
 
@@ -260,128 +317,39 @@ func (l *Layout) UpdateChildWidgets() {
 
 	no_of_children := len(l.Children)
 
-	switch l.Type {
-	case LayoutHorizontal:
-		// First pass: calculate total fixed width and count flexible children
-		var fixedWidthTotal float32 = 0
-		var flexibleChildren int = 0
+	for i, child_widget := range l.Children {
 
-		for _, child := range l.Children {
-			childLayout := child.GetLayout()
-			if childLayout.FixedWidth > 0 {
-				fixedWidthTotal += childLayout.FixedWidth
-			} else {
-				flexibleChildren++
+		switch l.Type {
+		case LayoutHorizontal:
+
+			width := (l.Bounds.Width / float32(no_of_children)) - float32(l.Spacing)
+			height := l.Bounds.Height - float32(l.Spacing)
+			xpos := l.Bounds.X + (width * float32(i)) + float32(l.Spacing)
+			ypos := l.Bounds.Y + float32(l.Spacing)
+
+			child_widget.SetBounds(rl.NewRectangle(xpos, ypos, width, height))
+
+		case LayoutVertical:
+			width := l.Bounds.Width - float32(l.Spacing) - float32(i*no_of_children)
+			height := (l.Bounds.Height / float32(no_of_children)) - float32(l.Spacing)
+
+			xpos := l.Bounds.X + float32(l.Spacing)
+			ypos := l.Bounds.Y + float32(l.Spacing) + (height * float32(i)) + float32(l.Spacing)
+
+			child_widget.SetBounds(rl.NewRectangle(xpos, ypos, width, height))
+
+		case LayoutGrid:
+			cols := int(math.Ceil(math.Sqrt(float64(no_of_children))))
+			if cols < 1 {
+				cols = 1
 			}
-		}
+			rows := (no_of_children + cols - 1) / cols
 
-		// Calculate available width for flexible children
-		availableWidth := l.Bounds.Width - float32(l.Spacing*(no_of_children-1))
-		availableFlexibleWidth := availableWidth - fixedWidthTotal
-		flexibleWidth := float32(0)
-		if flexibleChildren > 0 {
-			flexibleWidth = availableFlexibleWidth / float32(flexibleChildren)
-		}
+			availableW := l.Bounds.Width - float32(l.Spacing*(cols+1))
+			availableH := l.Bounds.Height - float32(l.Spacing*(rows+1))*float32(rows)
 
-		// Second pass: set bounds for each child
-		var currentX float32 = l.Bounds.X
-
-		for _, child := range l.Children {
-			childLayout := child.GetLayout()
-
-			width := float32(0)
-			height := l.Bounds.Height
-
-			// Use fixed width if specified, otherwise use calculated flexible width
-			if childLayout.FixedWidth > 0 {
-				width = childLayout.FixedWidth
-			} else {
-				width = flexibleWidth
-			}
-
-			// Use fixed height if specified for the child
-			if childLayout.FixedHeight > 0 {
-				height = childLayout.FixedHeight
-			}
-
-			child.SetBounds(rl.NewRectangle(currentX, l.Bounds.Y, width, height))
-			currentX += width + float32(l.Spacing)
-		}
-
-	case LayoutVertical:
-		// First pass: calculate total fixed height and count flexible children
-		var fixedHeightTotal float32 = 0
-		var flexibleChildren int = 0
-
-		for _, child := range l.Children {
-			childLayout := child.GetLayout()
-			if childLayout.FixedHeight > 0 {
-				fixedHeightTotal += childLayout.FixedHeight
-			} else {
-				flexibleChildren++
-			}
-		}
-
-		// Calculate available height for flexible children
-		availableHeight := l.Bounds.Height - float32(l.Spacing*(no_of_children-1))
-		availableFlexibleHeight := availableHeight - fixedHeightTotal
-		flexibleHeight := float32(0)
-		if flexibleChildren > 0 {
-			flexibleHeight = availableFlexibleHeight / float32(flexibleChildren)
-		}
-
-		// Second pass: set bounds for each child
-		var currentY float32 = l.Bounds.Y
-
-		for _, child := range l.Children {
-			childLayout := child.GetLayout()
-
-			width := l.Bounds.Width
-			height := float32(0)
-
-			// Use fixed height if specified, otherwise use calculated flexible height
-			if childLayout.FixedHeight > 0 {
-				height = childLayout.FixedHeight
-			} else {
-				height = flexibleHeight
-			}
-
-			// Use fixed width if specified for the child
-			if childLayout.FixedWidth > 0 {
-				width = childLayout.FixedWidth
-			}
-
-			child.SetBounds(rl.NewRectangle(l.Bounds.X, currentY, width, height))
-			currentY += height + float32(l.Spacing)
-		}
-
-	case LayoutGrid:
-		cols := int(math.Ceil(math.Sqrt(float64(no_of_children))))
-		if cols < 1 {
-			cols = 1
-		}
-		rows := (no_of_children + cols - 1) / cols
-
-		availableW := l.Bounds.Width - float32(l.Spacing*(cols+1))
-		availableH := l.Bounds.Height - float32(l.Spacing*(rows+1))
-
-		// Default cell dimensions
-		cellW := availableW / float32(cols)
-		cellH := availableH / float32(rows)
-
-		for i, child := range l.Children {
-			childLayout := child.GetLayout()
-
-			// Use fixed dimensions if specified, otherwise use calculated cell dimensions
-			width := cellW
-			if childLayout.FixedWidth > 0 {
-				width = childLayout.FixedWidth
-			}
-
-			height := cellH
-			if childLayout.FixedHeight > 0 {
-				height = childLayout.FixedHeight
-			}
+			cellW := availableW / float32(cols)
+			cellH := availableH / float32(rows)
 
 			row := i / cols
 			col := i % cols
@@ -389,97 +357,20 @@ func (l *Layout) UpdateChildWidgets() {
 			xpos := l.Bounds.X + float32(l.Spacing) + float32(col)*(cellW+float32(l.Spacing))
 			ypos := l.Bounds.Y + float32(l.Spacing) + float32(row)*(cellH+float32(l.Spacing))
 
-			child.SetBounds(rl.NewRectangle(xpos, ypos, width, height))
+			child_widget.SetBounds(rl.NewRectangle(xpos, ypos, cellW, cellH))
 		}
 	}
-}
-
-func (l *Layout) GetMinSize() rl.Vector2 {
-	var minWidth, minHeight float32 = 0, 0
-
-	titleBarHeight := float32(1)
-
-	switch l.Type {
-	case LayoutVertical:
-		// Calculate from children
-		for _, child := range l.Children {
-			if !child.GetVisibility() {
-				continue
-			}
-			childBounds := child.GetBounds()
-			if childBounds.Width > minWidth {
-				minWidth = childBounds.Width
-			}
-			minHeight += childBounds.Height + float32(l.Spacing)
-		}
-
-		// Calculate from nested layouts
-		for _, layout := range l.Layouts {
-			if !layout.GetVisibility() {
-				continue
-			}
-			layoutSize := layout.GetMinSize()
-			if layoutSize.X > minWidth {
-				minWidth = layoutSize.X
-			}
-			minHeight += layoutSize.Y + float32(l.Spacing)
-		}
-
-		minHeight += titleBarHeight + l.Padding.Y*2
-		minWidth += l.Padding.X * 2
-
-	case LayoutHorizontal:
-		// Calculate from children
-		for _, child := range l.Children {
-			if !child.GetVisibility() {
-				continue
-			}
-			childBounds := child.GetBounds()
-			minWidth += childBounds.Width + float32(l.Spacing)
-			if childBounds.Height > minHeight {
-				minHeight = childBounds.Height
-			}
-		}
-
-		// Calculate from nested layouts
-		for _, layout := range l.Layouts {
-			if !layout.GetVisibility() {
-				continue
-			}
-			layoutSize := layout.GetMinSize()
-			minWidth += layoutSize.X + float32(l.Spacing)
-			if layoutSize.Y > minHeight {
-				minHeight = layoutSize.Y
-			}
-		}
-
-		minHeight += titleBarHeight + l.Padding.Y*2
-		minWidth += l.Padding.X * 2
-	}
-
-	return rl.NewVector2(minWidth, minHeight)
 }
 
 func (l *Layout) Draw() {
 	if !l.Visible {
 		return
 	}
-	for _, child_widget := range l.Children {
-		child_widget.Draw()
-	}
+
 	for _, child_layout := range l.Layouts {
 		child_layout.Draw()
 	}
-
-	if l.FixedHeight > 0 {
-		l.Bounds.Height = l.FixedHeight
-		fmt.Println(l.Bounds)
-
-	}
-	if l.FixedWidth > 0 {
-		l.Bounds.Width = l.FixedWidth
-	}
-	if l.Name == "MenuBarLayout" || l.Name == "MidPanelLayout" || l.Name == "LowerPanelLayout" {
-		rl.DrawRectangleLinesEx(l.Bounds, 1, rl.Pink)
+	for _, child_widget := range l.Children {
+		child_widget.Draw()
 	}
 }
