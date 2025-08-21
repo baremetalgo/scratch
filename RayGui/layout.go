@@ -32,19 +32,23 @@ type BoundsSetter interface {
 }
 
 type Layout struct {
-	Name        string
-	Type        int
-	Widget      MainWidget
-	Children    []MainWidget
-	Layouts     []*Layout
-	Parent      *Layout
-	Spacing     int
-	Padding     rl.Vector2
-	Visible     bool
-	Bounds      rl.Rectangle
-	FixedHeight float32
-	FixedWidth  float32
-	DebugDraw   bool
+	Name          string
+	Type          int
+	Widget        MainWidget
+	Children      []MainWidget
+	Layouts       []*Layout
+	Parent        *Layout
+	Spacing       int
+	Padding       rl.Vector2
+	Visible       bool
+	Bounds        rl.Rectangle
+	FixedHeight   float32
+	FixedWidth    float32
+	MinimumHeight float32
+	MinumumWidth  float32
+	MaximumHeight float32
+	MaximumWidth  float32
+	DebugDraw     bool
 }
 
 func NewLayout() *Layout {
