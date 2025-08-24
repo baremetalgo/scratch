@@ -6,6 +6,8 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+var ALL_WIDGETS []MainWidget
+
 type BaseWidget struct {
 	Name                  string
 	Visible               bool
@@ -40,16 +42,15 @@ type BaseWidget struct {
 	childPositions        map[*BaseWidget]rl.Vector2
 	childMinimizedStates  map[*BaseWidget]bool
 	CloseButton           rl.Rectangle
+	zIndex                int
 }
 
 func NewBaseWidget(name string) *BaseWidget {
 	b := &BaseWidget{
-		Name:         name,
-		Visible:      true,
-		IsMainWindow: false,
-		Bounds:       rl.NewRectangle(0, 0, 800, 600),
-		// MaxWidth:             ,
-		// MaxHeight:            300,
+		Name:                  name,
+		Visible:               true,
+		IsMainWindow:          false,
+		Bounds:                rl.NewRectangle(0, 0, 800, 600),
 		MinWidth:              50.0,
 		MinHeight:             50,
 		Parent:                nil,
@@ -65,26 +66,42 @@ func NewBaseWidget(name string) *BaseWidget {
 		resizeHandlerColor:    Default_ResizerHandler_Color,
 		last_position:         rl.NewVector2(0, 0),
 		Closed:                false,
+		childPositions:        make(map[*BaseWidget]rl.Vector2),
+		childMinimizedStates:  make(map[*BaseWidget]bool),
 	}
-	b.IsMainWindow = false
-	b.Layout = NewLayout()
-	b.Layout.Name = fmt.Sprintf("%v_Layout", b.Name)
-	b.Layout.Widget = b
+	b.SetZIndex(1)
+
+	// Initialize layout FIRST
+	b.SetLayout(0)
 
 	b.last_position = rl.NewVector2(b.Bounds.X, b.Bounds.Y)
 	b.HeaderFont = Default_Widget_Header_Font
 	b.TextFont = Default_Widget_Body_Text_Font
 
-	if b.Layout.FixedHeight > 1 {
-		b.Bounds.Height = NewLayout().FixedHeight
-
-	}
-	if b.Layout.FixedWidth > 1 {
-		b.Bounds.Width = NewLayout().FixedWidth
-	}
+	// Set initial layout bounds
 	b.Layout.Bounds = b.Bounds
 
+	ALL_WIDGETS = append(ALL_WIDGETS, b)
 	return b
+}
+
+func (b *BaseWidget) SetLayout(layout_type int) {
+	b.Layout = NewLayout()
+	b.Layout.Type = layout_type
+	b.Layout.Name = fmt.Sprintf("%v_Layout", b.Name)
+	b.Layout.Widget = b
+}
+
+func (b *BaseWidget) GetZIndex() int {
+	return b.zIndex
+}
+
+func (b *BaseWidget) SetZIndex(zIndex int) {
+	b.zIndex = zIndex
+}
+
+func (b *BaseWidget) MainWindow() bool {
+	return b.IsMainWindow
 }
 
 func (b *BaseWidget) GetBounds() rl.Rectangle {
@@ -164,7 +181,6 @@ func (b *BaseWidget) Draw() {
 	if !b.Visible || b.Closed {
 		return
 	}
-
 	// Draw background first
 	if b.DrawBackground {
 		rl.DrawRectangleRec(b.Layout.Bounds, b.BgColor)
@@ -237,7 +253,9 @@ func (b *BaseWidget) Draw() {
 
 		b.resizeHandler = handleRect
 	}
+
 	b.Layout.Draw()
+
 }
 
 func (b *BaseWidget) Update() {
