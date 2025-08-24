@@ -14,7 +14,7 @@
 </ul>
  </p>
  <p>
- <img src ="./sources/scratchUI.png">
+ <img src =".sources/scratch_window.png"> </img>
  </p>
 <H2 align="left">Examples -</H2>
   <script>
