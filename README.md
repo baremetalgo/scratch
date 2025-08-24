@@ -14,12 +14,11 @@
 </ul>
  </p>
  <p>
- <img src =".sources/scratch_window.png"> </img>
+<p align="center">
+  <img src="./sources/scratch_window.png" alt="Scratch Window" width="600"/>
+</p>
  </p>
-<H2 align="left">Examples -</H2>
-  <script>
-            hljs.highlightAll();
-        </script>
+
 
 ## Examples
 
