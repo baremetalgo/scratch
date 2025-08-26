@@ -20,6 +20,7 @@ func create_menu_bar(menubarLayout *RayGui.Layout) *RayWidgets.MenuBar {
 	open_asset_action := RayWidgets.NewActionMenuItem("Open Asset")
 	open_level_action := RayWidgets.NewActionMenuItem("Open Level")
 	exit_action := RayWidgets.NewActionMenuItem("Exit")
+
 	file_menu.AddAction(open_level_action)
 	file_menu.AddAction(open_asset_action)
 	file_menu.AddAction(save_menu_action)
@@ -70,7 +71,7 @@ func create_scratch_window() *RayGui.BaseWidget {
 	// Level Explorer
 	levelExplorer := RayGui.NewBaseWidget("Level Explorer")
 	levelExplorer.Layout.Name = "LevelExpLayout"
-	levelExplorer.Layout.SetMaximumWidth(200)
+	levelExplorer.Layout.SetMaximumWidth(300)
 	midPanelLayout.AddChild(levelExplorer)
 	midPanelLayout.SizePolicy = RayGui.SizePolicyExpanding
 
@@ -80,7 +81,8 @@ func create_scratch_window() *RayGui.BaseWidget {
 
 	// PropertiesPanel
 	propertiesPanel := RayGui.NewBaseWidget("Properties")
-	propertiesPanel.Layout.SetMaximumWidth(200)
+	propertiesPanel.Layout.Name = "PropertiesWidgetLayout"
+	propertiesPanel.Layout.SetMaximumWidth(300)
 	midPanelLayout.AddChild(propertiesPanel)
 
 	// Asset Browser
@@ -89,7 +91,6 @@ func create_scratch_window() *RayGui.BaseWidget {
 
 	// Menubar
 	create_menu_bar(menubarLayout)
-
 	return mainWidget
 }
 
@@ -109,6 +110,5 @@ func main() {
 		rl.EndDrawing()
 	}
 
-	mainWidget.Unload()
 	rl.CloseWindow()
 }

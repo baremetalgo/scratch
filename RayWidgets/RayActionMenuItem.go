@@ -16,7 +16,6 @@ func NewActionMenuItem(name string) *ActionMenuItem {
 	item := &ActionMenuItem{}
 	item.Name = name
 	item.Visible = true
-	item.Bounds = rl.NewRectangle(0, 0, 200, 500)
 	item.TitleBar = false
 	item.DrawBackground = false
 	item.DrawWidgetBorder = false

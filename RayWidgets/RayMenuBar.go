@@ -16,7 +16,6 @@ func NewMenubar(name string) *MenuBar {
 	m := &MenuBar{}
 	m.Name = name
 	m.Visible = true
-	m.Bounds = rl.NewRectangle(0, 0, 800, 50) // Default size
 	m.TitleBar = false
 	m.DrawBackground = false
 	m.DrawWidgetBorder = false
@@ -60,10 +59,10 @@ func (m *MenuBar) Draw() {
 	}
 	m.Update()
 	// Draw background
-	rl.DrawRectangleLinesEx(m.Bounds, 1, m.BorderColor)
+	rl.DrawRectangleLinesEx(m.Layout.Bounds, 1, m.BorderColor)
 	// fmt.Println(m.Bounds)
 	// Draw menu items
-	xPos := m.Bounds.X + 10
+	xPos := m.Layout.Bounds.X + 10
 
 	for _, item := range m.ContextMenus {
 		// Only draw the context menu if it's the active one
@@ -72,19 +71,19 @@ func (m *MenuBar) Draw() {
 		}
 
 		textSize := rl.MeasureTextEx(m.HeaderFont, item.Name, float32(RayGui.Default_Header_Font_Size), 0)
-		rl.DrawTextEx(m.HeaderFont, item.Name, rl.NewVector2(xPos+10, m.Bounds.Y+15), float32(RayGui.Default_Header_Font_Size), 0, m.TextColor)
+		rl.DrawTextEx(m.HeaderFont, item.Name, rl.NewVector2(xPos+10, m.Layout.Bounds.Y+15), float32(RayGui.Default_Header_Font_Size), 0, m.TextColor)
 		xPos += textSize.X + 40
 	}
 }
 
 func (m *MenuBar) Update() {
 	m.Layout.Update()
-	xPos := m.Bounds.X + 10
+	xPos := m.Layout.Bounds.X + 10
 
 	for _, item := range m.ContextMenus {
 		textSize := rl.MeasureTextEx(m.HeaderFont, item.Name, float32(RayGui.Default_Header_Font_Size), 0)
 		item.Bounds.X = xPos + 10
-		item.Bounds.Y = m.Bounds.Y + 30
+		item.Bounds.Y = m.Layout.Bounds.Y + 30
 		xPos += textSize.X + 40
 	}
 
@@ -105,7 +104,7 @@ func (m *MenuBar) HandleClicks() {
 	// If click was outside all menus, hide all
 	if rl.IsMouseButtonPressed(rl.MouseLeftButton) {
 		mousePos := rl.GetMousePosition()
-		clickedOnMenuBar := rl.CheckCollisionPointRec(mousePos, m.Bounds)
+		clickedOnMenuBar := rl.CheckCollisionPointRec(mousePos, m.Layout.Bounds)
 
 		if !clickedOnMenuBar {
 			// Click outside menu bar - hide all menus
@@ -117,14 +116,14 @@ func (m *MenuBar) HandleClicks() {
 		}
 
 		// Check if a menu title was clicked
-		xPos := m.Bounds.X + 10
+		xPos := m.Layout.Bounds.X + 10
 		for _, menu := range m.ContextMenus {
 			textSize := rl.MeasureTextEx(m.HeaderFont, menu.Name, float32(RayGui.Default_Header_Font_Size), 0)
 			menuRect := rl.NewRectangle(
 				xPos,
-				m.Bounds.Y,
+				m.Layout.Bounds.Y,
 				textSize.X+20,
-				m.Bounds.Height,
+				m.Layout.Bounds.Height,
 			)
 
 			if rl.CheckCollisionPointRec(mousePos, menuRect) {

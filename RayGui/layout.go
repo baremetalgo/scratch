@@ -23,14 +23,11 @@ const (
 type MainWidget interface {
 	Update()
 	Draw()
-	SetBounds(rl.Rectangle)
-	GetBounds() rl.Rectangle
 	GetVisibility() bool
 	GetBgColor() rl.Color
 	GetTextFont() rl.Font
 	GetTextColor() rl.Color
 	GetName() string
-	GetTitleBarBound() rl.Rectangle
 	GetTitleBar() bool
 	GetLayout() *Layout
 	GetZIndex() int
@@ -39,11 +36,6 @@ type MainWidget interface {
 
 type BoundsSetter interface {
 	SetBounds(bounds rl.Rectangle)
-}
-
-type ZIndexable interface {
-	GetZIndex() int
-	SetZIndex(zIndex int)
 }
 
 type Layout struct {
@@ -77,7 +69,7 @@ func NewLayout() *Layout {
 		Children:      make([]MainWidget, 0),
 		Visible:       true,
 		Bounds:        rl.NewRectangle(0, 0, 0, 0),
-		DebugDraw:     false,
+		DebugDraw:     true,
 		fixedHeight:   0,
 		fixedWidth:    0,
 		minimumHeight: 0,
@@ -95,6 +87,8 @@ func (l *Layout) GetFixedHeight() float32 {
 func (l *Layout) SetFixedHeight(height float32) {
 	l.fixedHeight = height
 	l.maximumheight = 0
+	l.minimumHeight = 0
+	l.Bounds.Height = height
 }
 
 func (l *Layout) GetFixedWidth() float32 {
@@ -103,66 +97,32 @@ func (l *Layout) GetFixedWidth() float32 {
 
 func (l *Layout) SetFixedWidth(width float32) {
 	l.fixedWidth = width
+	l.minimumWidth = 0
 	l.maximumWidth = 0
+	l.Bounds.Width = width
 }
 
 func (l *Layout) GetMinimumWidth() float32 {
 	return l.minimumWidth
 }
 
-func (l *Layout) SetMinimumWidth(width float32) {
-	if l.maximumWidth < width {
-		panic_error := fmt.Sprintf("ERROR while seting MinumumWidth!, minimum width (%v) cannot be greater than maximum width (%v)", width, l.maximumWidth)
-		fmt.Errorf(panic_error)
-	}
-	l.minimumWidth = width
-	l.SetFixedWidth(0)
-}
-
 func (l *Layout) GetMaximumWidth() float32 {
 	return l.maximumWidth
-}
-
-func (l *Layout) SetMaximumWidth(width float32) {
-	if l.minimumWidth < width {
-		panic_error := fmt.Sprintf("ERROR while seting maximumWidth!, maximum width (%v) cannot be less than minimum width (%v)", width, l.minimumWidth)
-		fmt.Errorf(panic_error)
-	}
-	l.maximumWidth = width
-	l.SetFixedWidth(0)
 }
 
 func (l *Layout) GetMinimumHeight() float32 {
 	return l.minimumHeight
 }
 
-func (l *Layout) SetMinimumHeight(height float32) {
-	if l.minimumHeight < height {
-		panic_error := fmt.Sprintf("ERROR while seting MinumumWidth!, minimum width (%v) cannot be greater than maximum width (%v)", height, l.maximumheight)
-		fmt.Errorf(panic_error)
-	}
-	l.minimumHeight = height
-	l.SetFixedHeight(0)
-}
-
 func (l *Layout) GetMaximumHeight() float32 {
 	return l.maximumheight
-}
-
-func (l *Layout) SetMaximumHeight(height float32) {
-	if l.maximumheight < height {
-		panic_error := fmt.Sprintf("ERROR while seting maximumWidth!, maximum width (%v) cannot be less than minimum width (%v)", height, l.maximumheight)
-		fmt.Errorf(panic_error)
-	}
-	l.maximumheight = height
-	l.SetFixedHeight(0)
 }
 
 func (l *Layout) AddChild(child MainWidget) {
 	l.Children = append(l.Children, child)
 	l.AddLayout(child.GetLayout())
-	// ALL_WIDGETS = append(ALL_WIDGETS, child)
 }
+
 func (l *Layout) AddLayout(layout *Layout) {
 	l.Layouts = append(l.Layouts, layout)
 	layout.Parent = l
@@ -210,29 +170,74 @@ func (l *Layout) GetTextColor() rl.Color {
 
 func (l *Layout) SetBounds(bounds rl.Rectangle) {
 	l.Bounds = bounds
+	l.Bounds.Height = l.getSanitizedHeight(bounds.Height)
+	l.Bounds.Width = l.getSanitizedWidth(bounds.Width)
+}
+
+func (l *Layout) SetMinimumWidth(minimum_width float32) {
+	if l.maximumWidth > 0 {
+		if minimum_width > l.maximumWidth {
+			panic_error := fmt.Sprintf(
+				"ERROR while seting minimumWidth on layout %v!, minimum width (%v)"+
+					" cannot be greater than maximum width (%v)",
+				l.Name, minimum_width, l.maximumWidth)
+			panic(panic_error)
+		}
+
+	}
+
+	l.minimumWidth = minimum_width
+	l.fixedWidth = 0
+}
+
+func (l *Layout) SetMaximumWidth(maximum_width float32) {
+	if l.minimumWidth > 0 {
+		if maximum_width < l.minimumWidth {
+			panic_error := fmt.Sprintf(
+				"ERROR while seting maximumWidth of Layout %v!"+
+					" maximum width (%v) cannot be less than minimum width (%v)",
+				l.Name, maximum_width, l.minimumWidth)
+			panic(panic_error)
+		}
+
+	}
+
+	l.maximumWidth = maximum_width
+	l.fixedWidth = 0
+}
+
+func (l *Layout) SetMinimumHeight(minimum_height float32) {
+	if l.maximumheight > 0 {
+		if minimum_height > l.maximumheight {
+			panic_error := fmt.Sprintf(
+				"ERROR while seting MinumumWidth! on layout %v,"+
+					" minimum width (%v) cannot be greater than maximum width (%v)",
+				l.Name, minimum_height, l.maximumheight)
+			panic(panic_error)
+		}
+	}
+	l.minimumHeight = minimum_height
+	l.fixedHeight = 0
+}
+
+func (l *Layout) SetMaximumHeight(maximum_height float32) {
+	if l.minimumHeight > 0 {
+		if maximum_height < l.minimumHeight {
+			panic_error := fmt.Sprintf(
+				"ERROR while seting maximumWidth! on layout %v, maximum width (%v)"+
+					" cannot be less than minimum width (%v)",
+				l.Name, maximum_height, l.maximumheight)
+			panic(panic_error)
+		}
+	}
+	l.maximumheight = maximum_height
+	l.fixedHeight = 0
 }
 
 func (l *Layout) Update() {
 
-	if l.Widget != nil {
-		widget_bounds := l.Widget.GetBounds()
-		widget_titlebar_bounds := l.Widget.GetTitleBarBound()
-
-		l.Bounds.X = widget_bounds.X + l.Padding.X + float32(l.Spacing)
-		l.Bounds.Y = widget_bounds.Y + l.Padding.Y + float32(l.Spacing)
-		if l.Widget.GetTitleBar() {
-			l.Bounds.Y = widget_bounds.Y + widget_titlebar_bounds.Height + l.Padding.Y + float32(l.Spacing)
-		}
-
-		l.Bounds.Width = l.getSanitizedWidth(widget_bounds.Width - l.Padding.X*2)
-		l.Bounds.Height = l.getSanitizedHeight(widget_bounds.Height - widget_titlebar_bounds.Height - l.Padding.Y*2)
-
-	} else if l.Parent != nil {
-	}
-
-	// Adjust final height based on height of All the children
 	l.UpdateChildLayouts()
-	l.UpdateChildWidgets()
+
 	if l.DebugDraw {
 		rl.DrawRectangleLinesEx(l.Bounds, 1, rl.Pink)
 		rl.DrawTextEx(Default_Widget_Header_Font, l.Name, rl.NewVector2(l.Bounds.X, l.Bounds.Y), 15, 0, rl.Black)
@@ -245,46 +250,47 @@ func (l *Layout) UpdateChildLayouts() {
 	}
 
 	no_of_children := len(l.Layouts)
+	accumulated_layout_width := float32(0)
+	accumulated_layout_height := float32(0)
 
 	for i, child_layout := range l.Layouts {
 
 		switch l.Type {
 		case LayoutHorizontal:
-			availableWidth := l.Bounds.Width - float32(l.Spacing*(no_of_children-1)) - float32(child_layout.Spacing)
+			availableWidth := l.Bounds.Width - float32(l.Spacing*(no_of_children-1))
 
-			width := availableWidth / float32(no_of_children)
-
-			height := l.Bounds.Height - float32(child_layout.Spacing)
-
+			width := child_layout.getSanitizedWidth(availableWidth / float32(no_of_children))
+			height := child_layout.getSanitizedHeight(l.Bounds.Height - float32(child_layout.Spacing))
 			xpos := l.Bounds.X + (width+float32(l.Spacing))*float32(i) + float32(child_layout.Spacing)
 			ypos := l.Bounds.Y + float32(child_layout.Spacing)
 
-			child_layout.SetBounds(rl.NewRectangle(xpos, ypos, child_layout.getSanitizedWidth(width), child_layout.getSanitizedHeight(height)))
+			child_layout.SetBounds(rl.NewRectangle(xpos, ypos, width, height))
 
 			if i > 0 {
-
 				last_layout := l.Layouts[i-1]
-				child_layout.Bounds.Y = last_layout.Bounds.Y
-				child_layout.Bounds.X = last_layout.Bounds.X + child_layout.Bounds.Width + float32(l.Spacing)
+				child_layout.Bounds.X = last_layout.Bounds.X + last_layout.Bounds.Width + float32(l.Spacing)
 			}
+			accumulated_layout_width += width
+			accumulated_layout_height += height
 
 		case LayoutVertical:
-			width := l.Bounds.Width - float32(child_layout.Spacing)
-
-			availableHeight := l.Bounds.Height - float32(l.Spacing*(no_of_children-1)) - float32(child_layout.Spacing)
-
-			height := availableHeight/float32(no_of_children) - float32(child_layout.Spacing)
+			width := child_layout.getSanitizedWidth(l.Bounds.Width - float32(child_layout.Spacing*no_of_children))
+			availableHeight := l.Bounds.Height - float32(l.Spacing*(no_of_children-1))
+			height := child_layout.getSanitizedHeight(availableHeight/float32(no_of_children) - float32(child_layout.Spacing))
 
 			xpos := l.Bounds.X + float32(child_layout.Spacing)
 			ypos := l.Bounds.Y + (height+float32(l.Spacing))*float32(i) + float32(child_layout.Spacing)
-
-			child_layout.SetBounds(rl.NewRectangle(xpos, ypos, child_layout.getSanitizedWidth(width), child_layout.getSanitizedHeight(height)))
+			if i > 0 {
+				ypos = l.Bounds.Y + availableHeight
+			}
+			child_layout.SetBounds(rl.NewRectangle(xpos, ypos, width, height))
 			if i > 0 {
 
 				last_layout := l.Layouts[i-1]
 				child_layout.Bounds.Y = last_layout.Bounds.Y + last_layout.Bounds.Height + float32(l.Spacing)
-				child_layout.Bounds.X = last_layout.Bounds.X
 			}
+			accumulated_layout_width += width
+			accumulated_layout_height += height
 
 		case LayoutGrid:
 			cols := int(math.Ceil(math.Sqrt(float64(no_of_children))))
@@ -296,8 +302,8 @@ func (l *Layout) UpdateChildLayouts() {
 			availableW := l.Bounds.Width - float32(l.Spacing*(cols+1)) - float32(child_layout.Spacing)
 			availableH := l.Bounds.Height - float32(l.Spacing*(rows+1)) - float32(child_layout.Spacing)
 
-			cellW := availableW / float32(cols)
-			cellH := availableH / float32(rows)
+			cellW := child_layout.getSanitizedWidth(availableW / float32(cols))
+			cellH := child_layout.getSanitizedHeight(availableH / float32(rows))
 
 			row := i / cols
 			col := i % cols
@@ -305,14 +311,15 @@ func (l *Layout) UpdateChildLayouts() {
 			xpos := l.Bounds.X + float32(l.Spacing) + float32(col)*(cellW+float32(l.Spacing)) + float32(child_layout.Spacing)
 			ypos := l.Bounds.Y + float32(l.Spacing) + float32(row)*(cellH+float32(l.Spacing)) + float32(child_layout.Spacing)
 
-			child_layout.SetBounds(rl.NewRectangle(xpos, ypos, child_layout.getSanitizedWidth(cellW), child_layout.getSanitizedHeight(cellH)))
+			child_layout.SetBounds(rl.NewRectangle(xpos, ypos, cellW, cellH))
+
 		}
 
 		child_layout.UpdateChildLayouts()
-		child_layout.UpdateChildWidgets()
 
 		// accumulating height and width  if all children
-		if child_layout.GetFixedHeight() > 0 {
+
+		if child_layout.fixedHeight > 0 {
 			total_height := child_layout.Bounds.Height + float32(l.Spacing) + float32(child_layout.Spacing)
 
 			for _, child := range child_layout.Layouts {
@@ -321,7 +328,8 @@ func (l *Layout) UpdateChildLayouts() {
 			}
 			l.Bounds.Height = l.getSanitizedHeight(total_height)
 		}
-		if child_layout.GetFixedWidth() > 0 {
+
+		if child_layout.fixedWidth > 0 {
 			total_width := child_layout.Bounds.Width + float32(l.Spacing) + float32(child_layout.Spacing)
 
 			for _, child := range child_layout.Layouts {
@@ -335,97 +343,51 @@ func (l *Layout) UpdateChildLayouts() {
 			rl.DrawTextEx(Default_Widget_Header_Font, child_layout.Name, rl.NewVector2(child_layout.Bounds.X, child_layout.Bounds.Y), 15, 0, rl.Black)
 		}
 	}
+
 }
 
 func (l *Layout) getSanitizedWidth(width float32) float32 {
+	sanitized_width := width - float32(l.Spacing)
+
 	if l.fixedWidth > 1 {
-		return l.fixedWidth - float32(l.Spacing)
+
+		sanitized_width = l.fixedWidth - float32(l.Spacing)
 
 	}
 	if l.maximumWidth > 1 {
 		if width > l.maximumWidth {
-			return l.maximumWidth - float32(l.Spacing)
+			sanitized_width = l.maximumWidth - float32(l.Spacing)
 		}
 	}
 	if l.minimumWidth > 1 {
 		if width < l.minimumWidth {
-			return l.minimumWidth - float32(l.Spacing)
+			sanitized_width = l.minimumWidth - float32(l.Spacing)
 		}
 	}
-	return width - float32(l.Spacing)
+
+	return sanitized_width
 
 }
 
 func (l *Layout) getSanitizedHeight(height float32) float32 {
-
+	sanitized_height := height - float32(l.Spacing)
 	if l.fixedHeight > 1 {
-		return l.fixedHeight - float32(l.Spacing)
+		sanitized_height = l.fixedHeight - float32(l.Spacing)
 
 	}
 	if l.maximumheight > 1 {
 		if height > l.maximumheight {
-			return l.maximumheight - float32(l.Spacing)
+			sanitized_height = l.maximumheight - float32(l.Spacing)
 		}
 	}
 	if l.minimumHeight > 1 {
 		if height < l.minimumHeight {
-			return l.minimumHeight - float32(l.Spacing)
+			sanitized_height = l.minimumHeight - float32(l.Spacing)
 		}
 	}
-	return height - float32(l.Spacing)
 
-}
+	return sanitized_height
 
-func (l *Layout) UpdateChildWidgets() {
-	if len(l.Children) == 0 {
-		return
-	}
-
-	no_of_children := len(l.Children)
-
-	for i, child_widget := range l.Children {
-
-		switch l.Type {
-		case LayoutHorizontal:
-
-			width := (l.Bounds.Width / float32(no_of_children)) - float32(l.Spacing)
-			height := l.Bounds.Height - float32(l.Spacing)
-			xpos := l.Bounds.X + (width * float32(i)) + float32(l.Spacing)
-			ypos := l.Bounds.Y + float32(l.Spacing)
-
-			child_widget.SetBounds(rl.NewRectangle(xpos, ypos, width, height))
-
-		case LayoutVertical:
-			width := l.Bounds.Width - float32(l.Spacing) - float32(i*no_of_children)
-			height := (l.Bounds.Height / float32(no_of_children)) - float32(l.Spacing)
-
-			xpos := l.Bounds.X + float32(l.Spacing)
-			ypos := l.Bounds.Y + float32(l.Spacing) + (height * float32(i)) + float32(l.Spacing)
-
-			child_widget.SetBounds(rl.NewRectangle(xpos, ypos, width, height))
-
-		case LayoutGrid:
-			cols := int(math.Ceil(math.Sqrt(float64(no_of_children))))
-			if cols < 1 {
-				cols = 1
-			}
-			rows := (no_of_children + cols - 1) / cols
-
-			availableW := l.Bounds.Width - float32(l.Spacing*(cols+1))
-			availableH := l.Bounds.Height - float32(l.Spacing*(rows+1))*float32(rows)
-
-			cellW := availableW / float32(cols)
-			cellH := availableH / float32(rows)
-
-			row := i / cols
-			col := i % cols
-
-			xpos := l.Bounds.X + float32(l.Spacing) + float32(col)*(cellW+float32(l.Spacing))
-			ypos := l.Bounds.Y + float32(l.Spacing) + float32(row)*(cellH+float32(l.Spacing))
-
-			child_widget.SetBounds(rl.NewRectangle(xpos, ypos, cellW, cellH))
-		}
-	}
 }
 
 func (l *Layout) GetWidgets() []MainWidget {

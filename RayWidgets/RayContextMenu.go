@@ -8,6 +8,7 @@ import (
 
 type ContextMenu struct {
 	RayGui.BaseWidget
+	Bounds      rl.Rectangle
 	ActionItems []*ActionMenuItem
 	isClicked   bool
 	isVisible   bool // Add this flag to control visibility
@@ -17,7 +18,7 @@ func NewContextMenu(name string) *ContextMenu {
 	cmenu := &ContextMenu{}
 	cmenu.Name = name
 	cmenu.Visible = true
-	cmenu.Bounds = rl.NewRectangle(0, 0, 200, 500)
+
 	cmenu.TitleBar = false
 	cmenu.DrawBackground = false
 	cmenu.DrawWidgetBorder = false
@@ -26,6 +27,7 @@ func NewContextMenu(name string) *ContextMenu {
 
 	// Initialize the layout properly
 	cmenu.SetLayout(RayGui.LayoutVertical)
+	cmenu.Bounds = rl.NewRectangle(cmenu.Layout.Bounds.X, cmenu.Layout.Bounds.Y, 200, 500)
 	cmenu.HeaderFont = RayGui.Default_Widget_Header_Font
 	cmenu.TextColor = rl.White
 	cmenu.isClicked = false
