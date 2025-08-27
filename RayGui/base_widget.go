@@ -30,6 +30,9 @@ type BaseWidget struct {
 	TextFont              rl.Font
 	zIndex                int
 	lastHeight            float32
+	drawMinButton         bool
+	drawMaxButton         bool
+	drawCloseButton       bool
 }
 
 func NewBaseWidget(name string) *BaseWidget {
@@ -40,7 +43,7 @@ func NewBaseWidget(name string) *BaseWidget {
 		Parent:                nil,
 		BgColor:               Default_Bg_Color,
 		DrawBackground:        false,
-		DrawWidgetBorder:      false,
+		DrawWidgetBorder:      true,
 		TextColor:             Default_Text_Color,
 		BorderColor:           rl.Gray,
 		TitleBar:              true,
@@ -48,6 +51,9 @@ func NewBaseWidget(name string) *BaseWidget {
 		resizeHandlerColor:    Default_ResizerHandler_Color,
 		last_position:         rl.NewVector2(0, 0),
 		Closed:                false,
+		drawMinButton:         false,
+		drawMaxButton:         false,
+		drawCloseButton:       false,
 	}
 	b.SetZIndex(1)
 
@@ -162,16 +168,22 @@ func (b *BaseWidget) Draw() {
 		minBtn, maxBtn, closeBtn, minSize, maxSize, closeSize := b.buttonRects()
 
 		// Minimize button
-		rl.DrawRectangle(int32(minBtn.X), int32(minBtn.Y), minSize, minSize, rl.LightGray)
-		rl.DrawText("_", int32(minBtn.X)+3, int32(minBtn.Y)-2, 20, rl.Black)
+		if b.drawMinButton {
+			rl.DrawRectangle(int32(minBtn.X), int32(minBtn.Y), minSize, minSize, rl.LightGray)
+			rl.DrawText("_", int32(minBtn.X)+3, int32(minBtn.Y)-2, 20, rl.Black)
+		}
 
 		// Maximize button
-		rl.DrawRectangle(int32(maxBtn.X), int32(maxBtn.Y), maxSize, maxSize, rl.LightGray)
-		rl.DrawText("□", int32(maxBtn.X)+3, int32(maxBtn.Y)-2, 20, rl.Black)
+		if b.drawMaxButton {
+			rl.DrawRectangle(int32(maxBtn.X), int32(maxBtn.Y), maxSize, maxSize, rl.LightGray)
+			rl.DrawText("□", int32(maxBtn.X)+3, int32(maxBtn.Y)-2, 20, rl.Black)
+		}
 
 		// Close button
-		rl.DrawRectangle(int32(closeBtn.X), int32(closeBtn.Y), closeSize, closeSize, rl.LightGray)
-		rl.DrawText("x", int32(closeBtn.X)+2, int32(closeBtn.Y)-2, 20, rl.Black)
+		if b.drawCloseButton {
+			rl.DrawRectangle(int32(closeBtn.X), int32(closeBtn.Y), closeSize, closeSize, rl.LightGray)
+			rl.DrawText("x", int32(closeBtn.X)+2, int32(closeBtn.Y)-2, 20, rl.Black)
+		}
 	}
 
 	// Border last so it's on top

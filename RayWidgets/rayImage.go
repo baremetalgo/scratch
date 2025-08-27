@@ -8,109 +8,121 @@ import (
 )
 
 type RayImage struct {
-	FilePath  string
-	Texture   rl.Texture2D
-	Height    int32
-	Width     int32
-	Layout    *RayGui.Layout
-	Bounds    rl.Rectangle
-	Visible   bool
-	IsChecked bool
-	OnToggle  func(bool)
+	RayGui.BaseWidget
+	FilePath    string
+	Texture     rl.Texture2D
+	IsChecked   bool
+	OnToggle    func(bool)
+	AspectRatio float32
 }
 
-// Constructor
 func NewRayImage(filepath string, width, height int32) *RayImage {
 	texture := rl.LoadTexture(filepath)
 
 	img := &RayImage{
-		FilePath:  filepath,
-		Texture:   texture,
-		Width:     width,
-		Height:    height,
-		Visible:   true,
-		IsChecked: false,
-		Bounds:    rl.NewRectangle(0, 0, float32(width), float32(height)),
+		FilePath:    filepath,
+		Texture:     texture,
+		IsChecked:   false,
+		AspectRatio: float32(texture.Width) / float32(texture.Height),
 	}
+	img.Name = filepath
+	img.Visible = true
+	img.TitleBar = false
+
+	// Initialize layout properly
+	img.SetLayout(RayGui.LayoutVertical)
+	img.Layout.Bounds.Width = float32(width)
+	img.Layout.Bounds.Height = float32(height)
+	img.Layout.Widget = img
+
 	img.OnToggle = img.TriggerFunc
+
+	RayGui.ALL_WIDGETS = append(RayGui.ALL_WIDGETS, img)
 	return img
 }
 
-// Draw the image
+func (r *RayImage) getScaledBounds() rl.Rectangle {
+	containerWidth := r.Layout.Bounds.Width
+	containerHeight := r.Layout.Bounds.Height
+	containerAspect := containerWidth / containerHeight
+
+	var scaledWidth, scaledHeight float32
+	var x, y float32
+
+	if containerAspect > r.AspectRatio {
+		// Container is wider than image - letterbox on sides
+		scaledHeight = containerHeight
+		scaledWidth = scaledHeight * r.AspectRatio
+		x = r.Layout.Bounds.X + (containerWidth-scaledWidth)/2
+		y = r.Layout.Bounds.Y
+	} else {
+		// Container is taller than image - letterbox on top/bottom
+		scaledWidth = containerWidth
+		scaledHeight = scaledWidth / r.AspectRatio
+		x = r.Layout.Bounds.X
+		y = r.Layout.Bounds.Y + (containerHeight-scaledHeight)/2
+	}
+
+	return rl.NewRectangle(x, y, scaledWidth, scaledHeight)
+}
+
 func (r *RayImage) Draw() {
 	if !r.Visible {
 		return
 	}
-	r.Update()
-	// Scale to bounds
-	dest := rl.NewRectangle(r.Bounds.X, r.Bounds.Y, r.Bounds.Width, r.Bounds.Height)
-	src := rl.NewRectangle(0, 0, float32(r.Texture.Width), float32(r.Texture.Height))
 
+	scaledBounds := r.getScaledBounds()
+
+	// Draw background in letterbox areas
+	rl.DrawRectangleRec(r.Layout.Bounds, rl.Black) // Or your preferred background color
+
+	// Draw the texture with aspect ratio preservation
 	rl.DrawTexturePro(
 		r.Texture,
-		src,
-		dest,
+		rl.NewRectangle(0, 0, float32(r.Texture.Width), float32(r.Texture.Height)),
+		scaledBounds,
 		rl.NewVector2(0, 0),
 		0,
 		rl.White,
 	)
+
+	// Debug: Show aspect ratio info
+	rl.DrawText(fmt.Sprintf("AR: %.2f", r.AspectRatio),
+		int32(r.Layout.Bounds.X+5),
+		int32(r.Layout.Bounds.Y+5),
+		12, rl.White)
 }
 
 func (r *RayImage) Update() {
 	if !r.Visible {
 		return
 	}
+
+	// Update layout first
+	r.Layout.Update()
+
+	// Use scaled bounds for click detection
+	scaledBounds := r.getScaledBounds()
 	mousePos := rl.GetMousePosition()
 
-	// Check if the mouse is pressed and within the bounds of the checkbox
-	if rl.IsMouseButtonPressed(rl.MouseLeftButton) && rl.CheckCollisionPointRec(mousePos, r.Bounds) {
+	if rl.IsMouseButtonPressed(rl.MouseLeftButton) && rl.CheckCollisionPointRec(mousePos, scaledBounds) {
 		r.IsChecked = !r.IsChecked
 		if r.OnToggle != nil {
 			r.OnToggle(r.IsChecked)
 		}
 	}
-
-}
-
-// Implement bounds setter
-func (r *RayImage) SetBounds(bounds rl.Rectangle) {
-	r.Bounds = bounds
-}
-
-// Implement MainWidget interface methods
-func (r *RayImage) GetBounds() rl.Rectangle { return r.Bounds }
-func (r *RayImage) GetVisibility() bool     { return r.Visible }
-func (r *RayImage) GetBgColor() rl.Color    { return rl.Blank }
-func (r *RayImage) GetTextFont() rl.Font {
-	if r.Layout != nil {
-		return r.Layout.Widget.GetTextFont()
-	}
-	return RayGui.Default_Widget_Body_Text_Font
-}
-func (r *RayImage) GetTextColor() rl.Color { return rl.White }
-
-// Implement ChildWidget interface
-func (r *RayImage) SetLayout(layout *RayGui.Layout) {
-	r.Layout = layout
-	// If layout resizes the image, update bounds accordingly
-	r.Bounds.Width = float32(r.Width)
-	r.Bounds.Height = float32(r.Height)
-}
-
-func (r *RayImage) Unload() {
-	rl.UnloadTexture(r.Texture)
 }
 
 func (r *RayImage) Load(filePath string) {
 	rl.UnloadTexture(r.Texture)
 	r.FilePath = filePath
 	tex := rl.LoadTexture(filePath)
-	// defer rl.UnloadTexture(tex)
+	defer rl.UnloadTexture(tex)
 	r.Texture = tex
 }
 
 func (r *RayImage) TriggerFunc(value bool) {
-	path := "C:/Users/think/OneDrive/Desktop/wip.png"
+	path := "/sources/splash_screen.png"
 	if r.FilePath == path {
 		r.Load("C:/Users/think/OneDrive/Desktop/go_engine_ico.png")
 	} else {

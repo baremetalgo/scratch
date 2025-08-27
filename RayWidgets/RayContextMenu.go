@@ -87,7 +87,6 @@ func (cmenu *ContextMenu) Draw() {
 	const (
 		padding     = float32(12)
 		itemHeight  = float32(28)
-		textSize    = float32(16)
 		minWidth    = float32(120)
 		borderWidth = float32(1)
 	)
@@ -95,7 +94,7 @@ func (cmenu *ContextMenu) Draw() {
 	// Calculate maximum text width
 	maxTextWidth := float32(0)
 	for _, item := range cmenu.ActionItems {
-		textWidth := rl.MeasureTextEx(item.HeaderFont, item.Name, textSize, 0).X
+		textWidth := rl.MeasureTextEx(item.HeaderFont, item.Name, float32(RayGui.Default_Header_Font_Size), 0).X
 		if textWidth > maxTextWidth {
 			maxTextWidth = textWidth
 		}
@@ -135,7 +134,7 @@ func (cmenu *ContextMenu) Draw() {
 		}
 
 		// Draw text (properly aligned)
-		textSizeVec := rl.MeasureTextEx(item.HeaderFont, item.Name, textSize, 0)
+		textSizeVec := rl.MeasureTextEx(item.HeaderFont, item.Name, float32(RayGui.Default_Header_Font_Size), 0)
 		textX := itemRect.X + padding
 		textY := itemRect.Y + (itemHeight-textSizeVec.Y)/2
 
@@ -143,7 +142,7 @@ func (cmenu *ContextMenu) Draw() {
 			item.HeaderFont,
 			item.Name,
 			rl.NewVector2(textX, textY),
-			textSize,
+			float32(RayGui.Default_Header_Font_Size),
 			0,
 			cmenu.TextColor,
 		)

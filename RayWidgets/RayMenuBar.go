@@ -58,14 +58,10 @@ func (m *MenuBar) Draw() {
 		return
 	}
 	m.Update()
-	// Draw background
 	rl.DrawRectangleLinesEx(m.Layout.Bounds, 1, m.BorderColor)
-	// fmt.Println(m.Bounds)
-	// Draw menu items
 	xPos := m.Layout.Bounds.X + 10
 
 	for _, item := range m.ContextMenus {
-		// Only draw the context menu if it's the active one
 		if item == m.activeMenu {
 			item.Draw()
 		}
@@ -91,7 +87,6 @@ func (m *MenuBar) Update() {
 	m.HandleClicks()
 }
 
-// Add this method to handle menu bar interactions
 func (m *MenuBar) HandleClicks() {
 	// First check if any context menu item was clicked
 	for _, menu := range m.ContextMenus {
@@ -127,7 +122,6 @@ func (m *MenuBar) HandleClicks() {
 			)
 
 			if rl.CheckCollisionPointRec(mousePos, menuRect) {
-				// Toggle this menu (show if hidden, hide if shown)
 				if m.activeMenu == menu {
 					menu.Hide()
 					m.activeMenu = nil

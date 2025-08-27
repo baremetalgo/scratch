@@ -69,7 +69,7 @@ func NewLayout() *Layout {
 		Children:      make([]MainWidget, 0),
 		Visible:       true,
 		Bounds:        rl.NewRectangle(0, 0, 0, 0),
-		DebugDraw:     true,
+		DebugDraw:     false,
 		fixedHeight:   0,
 		fixedWidth:    0,
 		minimumHeight: 0,
@@ -238,10 +238,6 @@ func (l *Layout) Update() {
 
 	l.UpdateChildLayouts()
 
-	if l.DebugDraw {
-		rl.DrawRectangleLinesEx(l.Bounds, 1, rl.Pink)
-		rl.DrawTextEx(Default_Widget_Header_Font, l.Name, rl.NewVector2(l.Bounds.X, l.Bounds.Y), 15, 0, rl.Black)
-	}
 }
 
 func (l *Layout) UpdateChildLayouts() {

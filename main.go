@@ -60,7 +60,7 @@ func create_scratch_window() *RayGui.BaseWidget {
 	midPanelLayout := RayGui.NewLayout()
 	midPanelLayout.Name = "MidPanelLayout"
 	midPanelLayout.Type = RayGui.LayoutHorizontal
-	midPanelLayout.SetFixedHeight(500) // This was causing the panic
+	midPanelLayout.SetFixedHeight(640) // This was causing the panic
 	mainWidget.Layout.AddLayout(midPanelLayout)
 
 	lowerPanelLayout := RayGui.NewLayout()
@@ -71,18 +71,20 @@ func create_scratch_window() *RayGui.BaseWidget {
 	// Level Explorer
 	levelExplorer := RayGui.NewBaseWidget("Level Explorer")
 	levelExplorer.Layout.Name = "LevelExpLayout"
-	levelExplorer.Layout.SetMaximumWidth(300)
+	levelExplorer.Layout.SetFixedWidth(350)
 	midPanelLayout.AddChild(levelExplorer)
 	midPanelLayout.SizePolicy = RayGui.SizePolicyExpanding
 
 	// RenderPanel
-	renderPanel := RayGui.NewBaseWidget("Game View")
-	midPanelLayout.AddChild(renderPanel)
+	// renderPanel := RayGui.NewBaseWidget("Game View")
+	// midPanelLayout.AddChild(renderPanel)
+	render_image := RayWidgets.NewRayImage("E:/GitHub/scratch/sources/splash_screen.png", 1280, 720)
+	midPanelLayout.AddChild(render_image)
 
 	// PropertiesPanel
 	propertiesPanel := RayGui.NewBaseWidget("Properties")
 	propertiesPanel.Layout.Name = "PropertiesWidgetLayout"
-	propertiesPanel.Layout.SetMaximumWidth(300)
+	propertiesPanel.Layout.SetFixedWidth(350)
 	midPanelLayout.AddChild(propertiesPanel)
 
 	// Asset Browser
@@ -96,7 +98,7 @@ func create_scratch_window() *RayGui.BaseWidget {
 
 func main() {
 	rl.SetConfigFlags(rl.FlagWindowResizable | rl.FlagWindowTopmost)
-	rl.InitWindow(800, 600, "Scratch GUI Framework")
+	rl.InitWindow(1024, 720, "Scratch GUI Framework")
 
 	mainWidget := create_scratch_window()
 
