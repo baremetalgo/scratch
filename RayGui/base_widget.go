@@ -33,6 +33,7 @@ type BaseWidget struct {
 	drawMinButton         bool
 	drawMaxButton         bool
 	drawCloseButton       bool
+	DrawPostHook          func()
 }
 
 func NewBaseWidget(name string) *BaseWidget {
@@ -140,7 +141,12 @@ func (b *BaseWidget) Draw() {
 		return
 	}
 
+	if b.DrawBackground {
+		rl.DrawRectangleRec(b.Layout.Bounds, b.BgColor)
+	}
+
 	// Title bar - draw for all widgets that have TitleBar true, except main window
+
 	if b.TitleBar && !b.IsMainWindow {
 
 		TitleBarBounds := rl.NewRectangle(
@@ -190,6 +196,7 @@ func (b *BaseWidget) Draw() {
 	if b.DrawWidgetBorder {
 		rl.DrawRectangleLinesEx(b.Layout.Bounds, 1, b.BorderColor)
 	}
+
 	b.last_position = rl.NewVector2(b.Layout.Bounds.X, b.Layout.Bounds.Y)
 
 	// drawing resize handle in case of mainwindow
@@ -215,6 +222,10 @@ func (b *BaseWidget) Draw() {
 	}
 
 	b.Layout.Draw()
+
+	if b.DrawPostHook != nil {
+		b.DrawPostHook()
+	}
 
 }
 

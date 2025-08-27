@@ -7,8 +7,11 @@ import (
 var app_icon_path = "icons/app_icon_small.png"
 var Default_Widget_Header_Font rl.Font
 var Default_Widget_Body_Text_Font rl.Font
+
 var Default_Bg_Color rl.Color = rl.DarkGray
+
 var Default_Text_Color rl.Color = rl.White
+var Default_Silver_Color rl.Color = rl.NewColor(200, 200, 200, 255)
 var Default_Border_Color rl.Color = rl.Gray
 var Default_Titlebar_Color rl.Color = rl.NewColor(54, 54, 54, 255)
 var Default_ResizerHandler_Color rl.Color = rl.NewColor(54, 54, 54, 255)

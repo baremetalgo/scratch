@@ -69,15 +69,16 @@ func create_scratch_window() *RayGui.BaseWidget {
 	mainWidget.Layout.AddLayout(lowerPanelLayout)
 
 	// Level Explorer
-	levelExplorer := RayGui.NewBaseWidget("Level Explorer")
-	levelExplorer.Layout.Name = "LevelExpLayout"
+	levelExplorer := RayWidgets.NewTreeWidget("Level Explorer")
 	levelExplorer.Layout.SetFixedWidth(350)
 	midPanelLayout.AddChild(levelExplorer)
-	midPanelLayout.SizePolicy = RayGui.SizePolicyExpanding
+	light_item := RayWidgets.NewTreeWidgetItem("Lights")
+	levelExplorer.AddItem(light_item)
+	renderer_item := RayWidgets.NewTreeWidgetItem("Renderer")
+	levelExplorer.AddItem(renderer_item)
+	shadows := RayWidgets.NewTreeWidgetItem("Shadows")
+	renderer_item.AddChildItem(shadows)
 
-	// RenderPanel
-	// renderPanel := RayGui.NewBaseWidget("Game View")
-	// midPanelLayout.AddChild(renderPanel)
 	render_image := RayWidgets.NewRayImage("E:/GitHub/scratch/sources/splash_screen.png", 1280, 720)
 	midPanelLayout.AddChild(render_image)
 
