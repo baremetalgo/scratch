@@ -1,13 +1,14 @@
 package RayWidgets
 
 import (
-	"scratch/RayGui"
+	"github.com/baremetalgo/scratch/RayGui"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 type ContextMenu struct {
 	RayGui.BaseWidget
+	Bounds      rl.Rectangle
 	ActionItems []*ActionMenuItem
 	isClicked   bool
 	isVisible   bool // Add this flag to control visibility
@@ -17,7 +18,7 @@ func NewContextMenu(name string) *ContextMenu {
 	cmenu := &ContextMenu{}
 	cmenu.Name = name
 	cmenu.Visible = true
-	cmenu.Bounds = rl.NewRectangle(0, 0, 200, 500)
+
 	cmenu.TitleBar = false
 	cmenu.DrawBackground = false
 	cmenu.DrawWidgetBorder = false
@@ -26,6 +27,7 @@ func NewContextMenu(name string) *ContextMenu {
 
 	// Initialize the layout properly
 	cmenu.SetLayout(RayGui.LayoutVertical)
+	cmenu.Bounds = rl.NewRectangle(cmenu.Layout.Bounds.X, cmenu.Layout.Bounds.Y, 200, 500)
 	cmenu.HeaderFont = RayGui.Default_Widget_Header_Font
 	cmenu.TextColor = rl.White
 	cmenu.isClicked = false
@@ -85,7 +87,6 @@ func (cmenu *ContextMenu) Draw() {
 	const (
 		padding     = float32(12)
 		itemHeight  = float32(28)
-		textSize    = float32(16)
 		minWidth    = float32(120)
 		borderWidth = float32(1)
 	)
@@ -93,7 +94,7 @@ func (cmenu *ContextMenu) Draw() {
 	// Calculate maximum text width
 	maxTextWidth := float32(0)
 	for _, item := range cmenu.ActionItems {
-		textWidth := rl.MeasureTextEx(item.HeaderFont, item.Name, textSize, 0).X
+		textWidth := rl.MeasureTextEx(item.HeaderFont, item.Name, float32(RayGui.Default_Header_Font_Size), 0).X
 		if textWidth > maxTextWidth {
 			maxTextWidth = textWidth
 		}
@@ -133,7 +134,7 @@ func (cmenu *ContextMenu) Draw() {
 		}
 
 		// Draw text (properly aligned)
-		textSizeVec := rl.MeasureTextEx(item.HeaderFont, item.Name, textSize, 0)
+		textSizeVec := rl.MeasureTextEx(item.HeaderFont, item.Name, float32(RayGui.Default_Header_Font_Size), 0)
 		textX := itemRect.X + padding
 		textY := itemRect.Y + (itemHeight-textSizeVec.Y)/2
 
@@ -141,7 +142,7 @@ func (cmenu *ContextMenu) Draw() {
 			item.HeaderFont,
 			item.Name,
 			rl.NewVector2(textX, textY),
-			textSize,
+			float32(RayGui.Default_Header_Font_Size),
 			0,
 			cmenu.TextColor,
 		)

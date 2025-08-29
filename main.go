@@ -1,8 +1,8 @@
 package main
 
 import (
-	"scratch/RayGui"
-	"scratch/RayWidgets"
+	"github.com/baremetalgo/scratch/RayGui"
+	"github.com/baremetalgo/scratch/RayWidgets"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -20,6 +20,7 @@ func create_menu_bar(menubarLayout *RayGui.Layout) *RayWidgets.MenuBar {
 	open_asset_action := RayWidgets.NewActionMenuItem("Open Asset")
 	open_level_action := RayWidgets.NewActionMenuItem("Open Level")
 	exit_action := RayWidgets.NewActionMenuItem("Exit")
+
 	file_menu.AddAction(open_level_action)
 	file_menu.AddAction(open_asset_action)
 	file_menu.AddAction(save_menu_action)
@@ -59,7 +60,7 @@ func create_scratch_window() *RayGui.BaseWidget {
 	midPanelLayout := RayGui.NewLayout()
 	midPanelLayout.Name = "MidPanelLayout"
 	midPanelLayout.Type = RayGui.LayoutHorizontal
-	midPanelLayout.SetFixedHeight(500) // This was causing the panic
+	midPanelLayout.SetFixedHeight(640) // This was causing the panic
 	mainWidget.Layout.AddLayout(midPanelLayout)
 
 	lowerPanelLayout := RayGui.NewLayout()
@@ -68,19 +69,23 @@ func create_scratch_window() *RayGui.BaseWidget {
 	mainWidget.Layout.AddLayout(lowerPanelLayout)
 
 	// Level Explorer
-	levelExplorer := RayGui.NewBaseWidget("Level Explorer")
-	levelExplorer.Layout.Name = "LevelExpLayout"
-	levelExplorer.Layout.SetMaximumWidth(200)
+	levelExplorer := RayWidgets.NewTreeWidget("Level Explorer")
+	levelExplorer.Layout.SetFixedWidth(350)
 	midPanelLayout.AddChild(levelExplorer)
-	midPanelLayout.SizePolicy = RayGui.SizePolicyExpanding
+	light_item := RayWidgets.NewTreeWidgetItem("Lights")
+	levelExplorer.AddItem(light_item)
+	renderer_item := RayWidgets.NewTreeWidgetItem("Renderer")
+	levelExplorer.AddItem(renderer_item)
+	shadows := RayWidgets.NewTreeWidgetItem("Shadows")
+	renderer_item.AddChildItem(shadows)
 
-	// RenderPanel
-	renderPanel := RayGui.NewBaseWidget("Game View")
-	midPanelLayout.AddChild(renderPanel)
+	render_image := RayWidgets.NewRayImage("E:/GitHub/scratch/sources/splash_screen.png", 1280, 720)
+	midPanelLayout.AddChild(render_image)
 
 	// PropertiesPanel
 	propertiesPanel := RayGui.NewBaseWidget("Properties")
-	propertiesPanel.Layout.SetMaximumWidth(200)
+	propertiesPanel.Layout.Name = "PropertiesWidgetLayout"
+	propertiesPanel.Layout.SetFixedWidth(350)
 	midPanelLayout.AddChild(propertiesPanel)
 
 	// Asset Browser
@@ -89,13 +94,12 @@ func create_scratch_window() *RayGui.BaseWidget {
 
 	// Menubar
 	create_menu_bar(menubarLayout)
-
 	return mainWidget
 }
 
 func main() {
 	rl.SetConfigFlags(rl.FlagWindowResizable | rl.FlagWindowTopmost)
-	rl.InitWindow(800, 600, "Scratch GUI Framework")
+	rl.InitWindow(1024, 720, "Scratch GUI Framework")
 
 	mainWidget := create_scratch_window()
 
@@ -109,6 +113,5 @@ func main() {
 		rl.EndDrawing()
 	}
 
-	mainWidget.Unload()
 	rl.CloseWindow()
 }
