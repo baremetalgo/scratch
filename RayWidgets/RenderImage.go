@@ -2,8 +2,9 @@ package RayWidgets
 
 import (
 	"fmt"
-	"scratch/RayGui"
 	"unsafe"
+
+	"github.com/baremetalgo/scratch/RayGui"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )

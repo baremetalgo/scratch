@@ -1,8 +1,8 @@
 package main
 
 import (
-	"scratch/RayGui"
-	"scratch/RayWidgets"
+	"github.com/baremetalgo/scratch/RayGui"
+	"github.com/baremetalgo/scratch/RayWidgets"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
